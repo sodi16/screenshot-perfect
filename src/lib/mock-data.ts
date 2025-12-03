@@ -1,0 +1,280 @@
+export const users = [
+  { id: '1', username: 'john.doe', email: 'john@aiola.com', avatar: '' },
+  { id: '2', username: 'jane.smith', email: 'jane@aiola.com', avatar: '' }
+];
+
+export type TrainingStatus = 'running' | 'success' | 'failed' | 'queued';
+
+export interface TrainingRun {
+  id: string;
+  name: string;
+  status: TrainingStatus;
+  client: string;
+  userId: string;
+  startedAt: string;
+  completedAt: string | null;
+  dataGenerations: string[];
+  s3Path: string;
+  description: string;
+  parameters: {
+    hyperparameters: {
+      batchSize: number;
+      learningRate: number;
+      epochs: number;
+      optimizer: string;
+    };
+    prefectParams: {
+      gpuType: string;
+      instanceType: string;
+      memory: string;
+    };
+    modelFormat: string;
+  };
+}
+
+export const trainingRuns: TrainingRun[] = [
+  {
+    id: 'train_001',
+    name: 'Customer A ASR Model v2.1',
+    status: 'success',
+    client: 'Customer A',
+    userId: '1',
+    startedAt: '2025-01-15T10:00:00Z',
+    completedAt: '2025-01-15T14:30:00Z',
+    dataGenerations: ['data_gen_001', 'data_gen_002'],
+    s3Path: 's3://aiola-models/customer-a/train_001/',
+    description: 'Quarterly model update with improved accuracy',
+    parameters: {
+      hyperparameters: { batchSize: 32, learningRate: 0.001, epochs: 50, optimizer: 'Adam' },
+      prefectParams: { gpuType: 'V100', instanceType: 'p3.2xlarge', memory: '16GB' },
+      modelFormat: 'Triton'
+    }
+  },
+  {
+    id: 'train_002',
+    name: 'Customer B Multilingual Model',
+    status: 'running',
+    client: 'Customer B',
+    userId: '2',
+    startedAt: '2025-01-20T08:00:00Z',
+    completedAt: null,
+    dataGenerations: ['data_gen_003'],
+    s3Path: 's3://aiola-models/customer-b/train_002/',
+    description: 'Training on multiple languages',
+    parameters: {
+      hyperparameters: { batchSize: 64, learningRate: 0.0005, epochs: 100, optimizer: 'AdamW' },
+      prefectParams: { gpuType: 'A100', instanceType: 'p4d.24xlarge', memory: '32GB' },
+      modelFormat: 'LLM'
+    }
+  },
+  {
+    id: 'train_003',
+    name: 'Customer A Quick Test',
+    status: 'failed',
+    client: 'Customer A',
+    userId: '1',
+    startedAt: '2025-01-18T16:00:00Z',
+    completedAt: '2025-01-18T16:45:00Z',
+    dataGenerations: ['data_gen_001'],
+    s3Path: 's3://aiola-models/customer-a/train_003/',
+    description: 'Testing new preprocessing pipeline',
+    parameters: {
+      hyperparameters: { batchSize: 16, learningRate: 0.01, epochs: 10, optimizer: 'SGD' },
+      prefectParams: { gpuType: 'T4', instanceType: 'g4dn.xlarge', memory: '8GB' },
+      modelFormat: 'RT'
+    }
+  },
+  {
+    id: 'train_004',
+    name: 'Customer C Voice Recognition',
+    status: 'queued',
+    client: 'Customer C',
+    userId: '2',
+    startedAt: '2025-01-21T09:00:00Z',
+    completedAt: null,
+    dataGenerations: ['data_gen_002'],
+    s3Path: 's3://aiola-models/customer-c/train_004/',
+    description: 'New client onboarding model',
+    parameters: {
+      hyperparameters: { batchSize: 32, learningRate: 0.001, epochs: 75, optimizer: 'Adam' },
+      prefectParams: { gpuType: 'V100', instanceType: 'p3.2xlarge', memory: '16GB' },
+      modelFormat: 'Triton'
+    }
+  }
+];
+
+export interface DataGeneration {
+  id: string;
+  name: string;
+  client: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  totalRecords: number;
+  trainRecords: number;
+  testRecords: number;
+  valRecords: number;
+  s3Path: string;
+  createdAt: string;
+  filters: {
+    languages: string[];
+    asrModelVersion: string;
+    workflowId: string;
+    isNoisy: boolean | null;
+    overlappingSpeech: boolean;
+    isNotRelevant: boolean;
+    isVoiceRecordingNa: boolean;
+    clientList: string[];
+    werFinal: number;
+  };
+}
+
+export const dataGenerations: DataGeneration[] = [
+  {
+    id: 'data_gen_001',
+    name: 'Customer A - Q4 2024 Dataset',
+    client: 'Customer A',
+    dateRangeStart: '2024-10-01',
+    dateRangeEnd: '2024-12-31',
+    totalRecords: 50000,
+    trainRecords: 35000,
+    testRecords: 10000,
+    valRecords: 5000,
+    s3Path: 's3://aiola-datasets/customer-a/q4-2024/',
+    createdAt: '2025-01-10T12:00:00Z',
+    filters: {
+      languages: ['English', 'Spanish'],
+      asrModelVersion: 'v2.0',
+      workflowId: 'wf_12345',
+      isNoisy: false,
+      overlappingSpeech: false,
+      isNotRelevant: false,
+      isVoiceRecordingNa: false,
+      clientList: ['Customer A'],
+      werFinal: 0.15
+    }
+  },
+  {
+    id: 'data_gen_002',
+    name: 'Customer A - Recent Updates',
+    client: 'Customer A',
+    dateRangeStart: '2025-01-01',
+    dateRangeEnd: '2025-01-15',
+    totalRecords: 12000,
+    trainRecords: 8400,
+    testRecords: 2400,
+    valRecords: 1200,
+    s3Path: 's3://aiola-datasets/customer-a/jan-2025/',
+    createdAt: '2025-01-16T09:00:00Z',
+    filters: {
+      languages: ['English'],
+      asrModelVersion: 'v2.1',
+      workflowId: 'wf_12346',
+      isNoisy: null,
+      overlappingSpeech: false,
+      isNotRelevant: false,
+      isVoiceRecordingNa: false,
+      clientList: ['Customer A'],
+      werFinal: 0.12
+    }
+  },
+  {
+    id: 'data_gen_003',
+    name: 'Customer B - Multilingual Dataset',
+    client: 'Customer B',
+    dateRangeStart: '2024-11-01',
+    dateRangeEnd: '2025-01-15',
+    totalRecords: 80000,
+    trainRecords: 56000,
+    testRecords: 16000,
+    valRecords: 8000,
+    s3Path: 's3://aiola-datasets/customer-b/multilingual/',
+    createdAt: '2025-01-18T14:00:00Z',
+    filters: {
+      languages: ['English', 'Spanish', 'French', 'German'],
+      asrModelVersion: 'v2.1',
+      workflowId: 'wf_12347',
+      isNoisy: false,
+      overlappingSpeech: true,
+      isNotRelevant: false,
+      isVoiceRecordingNa: false,
+      clientList: ['Customer B'],
+      werFinal: 0.18
+    }
+  }
+];
+
+export interface Evaluation {
+  id: string;
+  trainingRunId: string;
+  testDataGenerationId: string;
+  evaluationType: string;
+  status: string;
+  metrics: {
+    accuracy: number;
+    wer: number;
+    precision: number;
+    recall: number;
+  };
+  evaluatedAt: string;
+  s3ResultsPath: string;
+}
+
+export const evaluations: Evaluation[] = [
+  {
+    id: 'eval_001',
+    trainingRunId: 'train_001',
+    testDataGenerationId: 'data_gen_002',
+    evaluationType: 'WER',
+    status: 'completed',
+    metrics: { accuracy: 0.94, wer: 0.12, precision: 0.93, recall: 0.95 },
+    evaluatedAt: '2025-01-16T10:00:00Z',
+    s3ResultsPath: 's3://aiola-evaluations/train_001/eval_001/'
+  },
+  {
+    id: 'eval_002',
+    trainingRunId: 'train_001',
+    testDataGenerationId: 'data_gen_001',
+    evaluationType: 'Accuracy',
+    status: 'completed',
+    metrics: { accuracy: 0.96, wer: 0.10, precision: 0.95, recall: 0.97 },
+    evaluatedAt: '2025-01-15T15:00:00Z',
+    s3ResultsPath: 's3://aiola-evaluations/train_001/eval_002/'
+  }
+];
+
+export interface ModelArtifact {
+  id: string;
+  trainingRunId: string;
+  artifactType: string;
+  modelFormat: string;
+  s3Path: string;
+  sizeMb: number;
+  createdAt: string;
+}
+
+export const modelArtifacts: ModelArtifact[] = [
+  {
+    id: 'artifact_001',
+    trainingRunId: 'train_001',
+    artifactType: 'model',
+    modelFormat: 'Triton',
+    s3Path: 's3://aiola-models/customer-a/train_001/model.tar.gz',
+    sizeMb: 245.5,
+    createdAt: '2025-01-15T14:30:00Z'
+  },
+  {
+    id: 'artifact_002',
+    trainingRunId: 'train_001',
+    artifactType: 'checkpoint',
+    modelFormat: 'Triton',
+    s3Path: 's3://aiola-models/customer-a/train_001/checkpoint_best.pt',
+    sizeMb: 122.3,
+    createdAt: '2025-01-15T12:00:00Z'
+  }
+];
+
+export const clients = ['Customer A', 'Customer B', 'Customer C', 'Customer D'];
+export const modelFormats = ['Triton', 'LLM', 'RT', 'ONNX'];
+export const optimizers = ['Adam', 'AdamW', 'SGD', 'RMSprop'];
+export const gpuTypes = ['V100', 'A100', 'T4', 'A10G'];
+export const instanceTypes = ['p3.2xlarge', 'p3.8xlarge', 'p4d.24xlarge', 'g4dn.xlarge', 'g5.xlarge'];
