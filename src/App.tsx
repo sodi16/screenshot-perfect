@@ -9,7 +9,8 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import TrainingRuns from "./pages/TrainingRuns";
-import DataGenerations from "./pages/DataGenerations";
+import Datasets from "./pages/Datasets";
+import DatasetDetail from "./pages/DatasetDetail";
 import ModelArtifacts from "./pages/ModelArtifacts";
 import Evaluations from "./pages/Evaluations";
 import Settings from "./pages/Settings";
@@ -40,10 +41,14 @@ function AppRoutes() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/training-runs" element={<TrainingRuns />} />
-        <Route path="/data-generations" element={<DataGenerations />} />
+        <Route path="/datasets" element={<Datasets />} />
+        <Route path="/datasets/:datasetId" element={<DatasetDetail />} />
         <Route path="/model-artifacts" element={<ModelArtifacts />} />
         <Route path="/evaluations" element={<Evaluations />} />
         <Route path="/settings" element={<Settings />} />
+        {/* Redirect old route */}
+        <Route path="/data-generations" element={<Navigate to="/datasets" replace />} />
+        <Route path="/data-generations/:id" element={<Navigate to="/datasets/:id" replace />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<NotFound />} />
