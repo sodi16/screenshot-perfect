@@ -1,0 +1,258 @@
+// API Service Layer - switches between dummy data and real API based on config
+import { APP_CONFIG } from './config';
+import { dataGenerations, trainingRuns, evaluations, modelArtifacts } from './mock-data';
+import type {
+  ManualFetchRequest,
+  ManualFetchResponse,
+  SaveFetchedDataRequest,
+  SaveFetchedDataResponse,
+  TrainingDataPreparationResponse,
+  TrainingExecutionCreate,
+  TrainingExecutionResponse,
+  PaginatedResponse,
+} from './api-types';
+import type { DataGeneration, TrainingRun, Evaluation, ModelArtifact } from './mock-data';
+
+// Helper to make API calls
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${APP_CONFIG.apiBaseUrl}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// ========== Datasets (Training Data Preparation) ==========
+
+export async function fetchDatasets(): Promise<DataGeneration[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(dataGenerations);
+  }
+  
+  const response = await apiCall<PaginatedResponse<TrainingDataPreparationResponse>>(
+    '/training_data_preparation/'
+  );
+  
+  // Map API response to our DataGeneration type
+  return response.items.map(mapApiDatasetToDataGeneration);
+}
+
+export async function fetchDatasetById(id: string): Promise<DataGeneration | null> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(dataGenerations.find(d => d.id === id) || null);
+  }
+  
+  const response = await apiCall<TrainingDataPreparationResponse>(
+    `/training_data_preparation/${id}`
+  );
+  
+  return mapApiDatasetToDataGeneration(response);
+}
+
+export async function createDatasetFetch(request: ManualFetchRequest): Promise<ManualFetchResponse> {
+  if (APP_CONFIG.useDummyData) {
+    // Simulate a fetch response
+    return Promise.resolve({
+      fetch_id: `fetch_${Date.now()}`,
+      preview: {
+        total_count: Math.floor(Math.random() * 50000) + 10000,
+        sample_records: [],
+      },
+      filters_applied: request.filters,
+    });
+  }
+  
+  return apiCall<ManualFetchResponse>('/training_data_preparation/manual/fetch', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+export async function saveDataset(request: SaveFetchedDataRequest): Promise<SaveFetchedDataResponse> {
+  if (APP_CONFIG.useDummyData) {
+    const newId = `data_gen_${Date.now()}`;
+    return Promise.resolve({
+      training_data_preparation_id: newId,
+      generation_name: request.generation_name,
+      s3_root_path: `s3://aiola-datasets/${request.customer_name || 'default'}/${newId}/`,
+      files: [],
+    });
+  }
+  
+  return apiCall<SaveFetchedDataResponse>('/training_data_preparation/manual/save_fetched_data', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+export async function deleteDataset(id: string): Promise<void> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve();
+  }
+  
+  await apiCall(`/training_data_preparation/${id}`, { method: 'DELETE' });
+}
+
+// ========== Training Runs ==========
+
+export async function fetchTrainingRuns(): Promise<TrainingRun[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(trainingRuns);
+  }
+  
+  const response = await apiCall<PaginatedResponse<TrainingExecutionResponse>>(
+    '/training/'
+  );
+  
+  return response.items.map(mapApiTrainingToTrainingRun);
+}
+
+export async function fetchTrainingRunById(id: string): Promise<TrainingRun | null> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(trainingRuns.find(t => t.id === id) || null);
+  }
+  
+  const response = await apiCall<TrainingExecutionResponse>(`/training/${id}`);
+  return mapApiTrainingToTrainingRun(response);
+}
+
+export async function createTrainingRun(request: TrainingExecutionCreate): Promise<TrainingExecutionResponse> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve({
+      training_execution_id: `train_${Date.now()}`,
+      training_execution_name: request.training_execution_name,
+      client_name: request.client_name,
+      description: request.description,
+      user_id: '1',
+      status: 'PENDING',
+      created_at: new Date().toISOString(),
+    });
+  }
+  
+  return apiCall<TrainingExecutionResponse>('/training/start', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+export async function abortTrainingRun(id: string, reason?: string): Promise<void> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve();
+  }
+  
+  await apiCall('/training/abort', {
+    method: 'POST',
+    body: JSON.stringify({ training_execution_id: id, reason }),
+  });
+}
+
+// ========== Evaluations ==========
+
+export async function fetchEvaluations(): Promise<Evaluation[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(evaluations);
+  }
+  
+  // TODO: Implement real API call when endpoint is available
+  return Promise.resolve(evaluations);
+}
+
+// ========== Model Artifacts ==========
+
+export async function fetchModelArtifacts(): Promise<ModelArtifact[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(modelArtifacts);
+  }
+  
+  // TODO: Implement real API call when endpoint is available
+  return Promise.resolve(modelArtifacts);
+}
+
+// ========== Mappers ==========
+
+function mapApiDatasetToDataGeneration(api: TrainingDataPreparationResponse): DataGeneration {
+  // Calculate record counts from files if available
+  const trainFile = api.files?.find(f => f.file_type === 'train');
+  const testFile = api.files?.find(f => f.file_type === 'test');
+  const valFile = api.files?.find(f => f.file_type === 'validation');
+  
+  const trainRecords = trainFile?.record_count || 0;
+  const testRecords = testFile?.record_count || 0;
+  const valRecords = valFile?.record_count || 0;
+  
+  return {
+    id: api.training_data_preparation_id,
+    name: api.generation_name,
+    client: api.customer_name || 'Unknown',
+    dateRangeStart: api.date_range_start?.split('T')[0] || '',
+    dateRangeEnd: api.date_range_end?.split('T')[0] || '',
+    totalRecords: trainRecords + testRecords + valRecords,
+    trainRecords,
+    testRecords,
+    valRecords,
+    s3Path: api.s3_root_path,
+    createdAt: api.created_at,
+    filters: {
+      languages: api.languages || [],
+      asrModelVersion: api.asr_model_version || '',
+      workflowId: api.workflow_ids?.[0] || '',
+      isNoisy: api.is_noisy ?? null,
+      overlappingSpeech: api.overlapping_speech ?? false,
+      isNotRelevant: api.is_not_relevant ?? false,
+      isVoiceRecordingNa: api.is_voice_recording_na ?? false,
+      clientList: api.customer_name ? [api.customer_name] : [],
+      werFinal: 0,
+    },
+  };
+}
+
+function mapApiTrainingToTrainingRun(api: TrainingExecutionResponse): TrainingRun {
+  const statusMap: Record<string, TrainingRun['status']> = {
+    PENDING: 'queued',
+    RUNNING: 'running',
+    COMPLETED: 'success',
+    FAILED: 'failed',
+    CANCELLED: 'failed',
+    CANCELLING: 'running',
+  };
+  
+  return {
+    id: api.training_execution_id,
+    name: api.training_execution_name,
+    status: statusMap[api.status] || 'queued',
+    client: api.client_name || 'Unknown',
+    userId: api.user_id,
+    startedAt: api.started_at || api.created_at,
+    completedAt: api.completed_at || null,
+    dataGenerations: [],
+    s3Path: api.s3_output_path || '',
+    description: api.description || '',
+    parameters: {
+      hyperparameters: (api.hyperparameters as TrainingRun['parameters']['hyperparameters']) || {
+        batchSize: 32,
+        learningRate: 0.001,
+        epochs: 50,
+        optimizer: 'Adam',
+      },
+      prefectParams: (api.prefect_parameters as TrainingRun['parameters']['prefectParams']) || {
+        gpuType: 'V100',
+        instanceType: 'p3.2xlarge',
+        memory: '16GB',
+      },
+      modelFormat: 'Triton',
+    },
+  };
+}

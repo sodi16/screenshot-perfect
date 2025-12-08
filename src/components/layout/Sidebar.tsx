@@ -16,7 +16,7 @@ import aiolaLogo from '@/assets/aiola-logo.webp';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Play, label: 'Training Runs', path: '/training-runs' },
-  { icon: Database, label: 'Data Generations', path: '/data-generations' },
+  { icon: Database, label: 'Datasets', path: '/datasets' },
   { icon: Package, label: 'Model Artifacts', path: '/model-artifacts' },
   { icon: BarChart3, label: 'Evaluations', path: '/evaluations' },
   { icon: Settings, label: 'Settings', path: '/settings' },

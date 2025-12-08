@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Check, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, Loader2, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import {
   Select,
@@ -14,14 +15,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { 
   clients, 
   modelFormats, 
-  optimizers, 
   gpuTypes, 
   instanceTypes, 
   dataGenerations 
 } from '@/lib/mock-data';
+import { 
+  visibleHyperparameters, 
+  hiddenHyperparameters, 
+  getDefaultHyperparameters,
+  type HyperparameterConfig 
+} from '@/lib/hyperparameters';
+import { createTrainingRun } from '@/lib/api-service';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -45,10 +57,7 @@ export function CreateTrainingForm() {
     client: '',
     modelFormat: '',
     selectedDataGens: [] as string[],
-    batchSize: 32,
-    learningRate: 0.001,
-    epochs: 50,
-    optimizer: 'Adam',
+    // Prefect params
     gpuType: 'V100',
     instanceType: 'p3.2xlarge',
     memory: 16,
@@ -56,8 +65,17 @@ export function CreateTrainingForm() {
     retryAttempts: 3,
   });
 
-  const updateForm = (key: string, value: any) => {
+  // Hyperparameters state from CSV
+  const [hyperparams, setHyperparams] = useState<Record<string, string | number | boolean>>(
+    getDefaultHyperparameters()
+  );
+
+  const updateForm = (key: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateHyperparam = (key: string, value: string | number | boolean) => {
+    setHyperparams(prev => ({ ...prev, [key]: value }));
   };
 
   const toggleDataGen = (id: string) => {
@@ -81,11 +99,83 @@ export function CreateTrainingForm() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSubmitting(false);
-    toast.success('Training run created successfully!');
-    navigate('/training-runs?tab=active');
+    try {
+      // Include hidden hyperparameters in the API call
+      const allHyperparams = { ...hyperparams };
+      hiddenHyperparameters.forEach(h => {
+        const key = h.argument;
+        if (h.type === 'custom_bool') {
+          allHyperparams[key] = h.defaultValue.toLowerCase() === 'true';
+        } else {
+          allHyperparams[key] = h.defaultValue;
+        }
+      });
+
+      await createTrainingRun({
+        training_execution_name: formData.name,
+        client_name: formData.client,
+        description: formData.description,
+        hyperparameters: allHyperparams,
+        prefect_parameters: {
+          gpuType: formData.gpuType,
+          instanceType: formData.instanceType,
+          memory: formData.memory,
+          timeout: formData.timeout,
+          retryAttempts: formData.retryAttempts,
+        },
+        training_data_preparation_ids: formData.selectedDataGens,
+      });
+      
+      toast.success('Training run created successfully!');
+      navigate('/training-runs?tab=active');
+    } catch (error) {
+      toast.error('Failed to create training run');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const renderHyperparameterInput = (config: HyperparameterConfig) => {
+    const key = config.argument;
+    const value = hyperparams[key];
+
+    switch (config.type) {
+      case 'int':
+        return (
+          <Input
+            type="number"
+            value={value as number}
+            onChange={(e) => updateHyperparam(key, parseInt(e.target.value) || 0)}
+          />
+        );
+      case 'float':
+        return (
+          <Input
+            type="number"
+            step="0.0001"
+            value={value as number}
+            onChange={(e) => updateHyperparam(key, parseFloat(e.target.value) || 0)}
+          />
+        );
+      case 'custom_bool':
+        return (
+          <Switch
+            checked={value as boolean}
+            onCheckedChange={(checked) => updateHyperparam(key, checked)}
+          />
+        );
+      case 'str':
+      case 'str_or_list':
+      default:
+        return (
+          <Input
+            type="text"
+            value={value as string}
+            onChange={(e) => updateHyperparam(key, e.target.value)}
+            placeholder={config.defaultValue || ''}
+          />
+        );
+    }
   };
 
   return (
@@ -124,7 +214,7 @@ export function CreateTrainingForm() {
           <CardTitle>{steps[currentStep - 1].title}</CardTitle>
           <CardDescription>
             {currentStep === 1 && 'Enter the basic details for your training run'}
-            {currentStep === 2 && 'Select the data generations to use for training'}
+            {currentStep === 2 && 'Select the datasets to use for training'}
             {currentStep === 3 && 'Configure the model hyperparameters'}
             {currentStep === 4 && 'Set up the Prefect execution parameters'}
             {currentStep === 5 && 'Review your configuration and submit'}
@@ -224,50 +314,29 @@ export function CreateTrainingForm() {
 
           {/* Step 3: Hyperparameters */}
           {currentStep === 3 && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Batch Size</Label>
-                  <Input
-                    type="number"
-                    value={formData.batchSize}
-                    onChange={(e) => updateForm('batchSize', parseInt(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Learning Rate</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    value={formData.learningRate}
-                    onChange={(e) => updateForm('learningRate', parseFloat(e.target.value))}
-                  />
-                </div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {visibleHyperparameters.map((config) => (
+                  <div key={config.argument} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">{config.argument}</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p>{config.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Default: {config.defaultValue || 'None'}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    {renderHyperparameterInput(config)}
+                  </div>
+                ))}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Epochs</Label>
-                  <Input
-                    type="number"
-                    value={formData.epochs}
-                    onChange={(e) => updateForm('epochs', parseInt(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Optimizer</Label>
-                  <Select value={formData.optimizer} onValueChange={(v) => updateForm('optimizer', v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {optimizers.map(o => (
-                        <SelectItem key={o} value={o}>{o}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </>
+            </div>
           )}
 
           {/* Step 4: Prefect Parameters */}
@@ -354,29 +423,29 @@ export function CreateTrainingForm() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h4 className="font-medium text-muted-foreground">Hyperparameters</h4>
+                  <h4 className="font-medium text-muted-foreground">Key Hyperparameters</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Batch Size</span>
-                      <span>{formData.batchSize}</span>
+                      <span>{hyperparams['batch-size']}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Learning Rate</span>
-                      <span>{formData.learningRate}</span>
+                      <span>{hyperparams['lr']}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Epochs</span>
-                      <span>{formData.epochs}</span>
+                      <span className="text-muted-foreground">Max Steps</span>
+                      <span>{hyperparams['max-steps']}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Optimizer</span>
-                      <span>{formData.optimizer}</span>
+                      <span>{hyperparams['optim']}</span>
                     </div>
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
-                <h4 className="font-medium text-muted-foreground">Data Generations ({formData.selectedDataGens.length})</h4>
+                <h4 className="font-medium text-muted-foreground">Datasets ({formData.selectedDataGens.length})</h4>
                 <div className="space-y-2">
                   {formData.selectedDataGens.map(id => {
                     const gen = dataGenerations.find(g => g.id === id);
