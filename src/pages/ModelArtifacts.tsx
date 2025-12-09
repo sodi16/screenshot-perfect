@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Package, 
   Download, 
@@ -8,7 +9,7 @@ import {
   Search,
   Filter
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,6 @@ import {
 } from '@/components/ui/table';
 import { modelArtifacts, trainingRuns } from '@/lib/mock-data';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -50,17 +50,29 @@ function getFormatIcon(format: string) {
   return colors[format] || 'bg-secondary text-muted-foreground';
 }
 
+function getModelTypeColor(type: string) {
+  return type === 'trtllm' 
+    ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' 
+    : 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+}
+
 export default function ModelArtifacts() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   const filtered = modelArtifacts.filter(artifact => {
     const run = trainingRuns.find(r => r.id === artifact.trainingRunId);
     return (
       run?.name.toLowerCase().includes(search.toLowerCase()) ||
-      artifact.modelFormat.toLowerCase().includes(search.toLowerCase())
+      artifact.modelFormat.toLowerCase().includes(search.toLowerCase()) ||
+      artifact.modelType.toLowerCase().includes(search.toLowerCase())
     );
   });
+
+  const handleCardClick = (artifactId: string) => {
+    navigate(`/model-artifacts/${artifactId}`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -110,19 +122,24 @@ export default function ModelArtifacts() {
           {filtered.map((artifact) => {
             const run = trainingRuns.find(r => r.id === artifact.trainingRunId);
             return (
-              <Card key={artifact.id} className="hover:border-primary/50 transition-colors">
+              <Card 
+                key={artifact.id} 
+                className="hover:border-primary/50 transition-colors cursor-pointer"
+                onClick={() => handleCardClick(artifact.id)}
+              >
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${getFormatIcon(artifact.modelFormat)}`}>
                       <Package className="h-6 w-6" />
                     </div>
-                    <Badge variant="secondary">{artifact.modelFormat}</Badge>
+                    <div className="flex gap-2">
+                      <Badge className={getModelTypeColor(artifact.modelType)}>
+                        {artifact.modelType.toUpperCase()}
+                      </Badge>
+                      <Badge variant="secondary">{artifact.modelFormat}</Badge>
+                    </div>
                   </div>
-                  <h3 className="font-medium mb-1">
-                    <Link to={`/training-runs/${artifact.trainingRunId}`} className="hover:text-primary transition-colors">
-                      {run?.name || 'Unknown'}
-                    </Link>
-                  </h3>
+                  <h3 className="font-medium mb-1">{run?.name || 'Unknown'}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{artifact.artifactType}</p>
                   
                   <div className="flex items-center justify-between text-sm mb-4">
@@ -134,7 +151,7 @@ export default function ModelArtifacts() {
                     <span>{formatDate(artifact.createdAt)}</span>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button variant="outline" size="sm" className="flex-1">
                       <Download className="mr-1 h-4 w-4" />
                       Download
@@ -163,6 +180,7 @@ export default function ModelArtifacts() {
                 <TableRow>
                   <TableHead>Artifact</TableHead>
                   <TableHead>Training Run</TableHead>
+                  <TableHead>Model Type</TableHead>
                   <TableHead>Format</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Created</TableHead>
@@ -173,7 +191,11 @@ export default function ModelArtifacts() {
                 {filtered.map((artifact) => {
                   const run = trainingRuns.find(r => r.id === artifact.trainingRunId);
                   return (
-                    <TableRow key={artifact.id}>
+                    <TableRow 
+                      key={artifact.id}
+                      className="cursor-pointer"
+                      onClick={() => handleCardClick(artifact.id)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className={`h-8 w-8 rounded flex items-center justify-center ${getFormatIcon(artifact.modelFormat)}`}>
@@ -185,17 +207,18 @@ export default function ModelArtifacts() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell>{run?.name}</TableCell>
                       <TableCell>
-                        <Link to={`/training-runs/${artifact.trainingRunId}`} className="hover:text-primary transition-colors">
-                          {run?.name}
-                        </Link>
+                        <Badge className={getModelTypeColor(artifact.modelType)}>
+                          {artifact.modelType.toUpperCase()}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{artifact.modelFormat}</Badge>
                       </TableCell>
                       <TableCell>{artifact.sizeMb} MB</TableCell>
                       <TableCell>{formatDate(artifact.createdAt)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm">
                             <Download className="h-4 w-4" />

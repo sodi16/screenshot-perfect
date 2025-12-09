@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Play, 
@@ -11,7 +11,8 @@ import {
   Eye,
   RefreshCw,
   BarChart3,
-  Trash2
+  Trash2,
+  Package
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,8 +33,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { trainingRuns, users } from '@/lib/mock-data';
+import { trainingRuns, users, modelArtifacts, TrainingRun } from '@/lib/mock-data';
 import { CreateTrainingForm } from '@/components/training/CreateTrainingForm';
+import { TrainingDetailsModal } from '@/components/training/TrainingDetailsModal';
 
 function getStatusBadge(status: string) {
   const variants: Record<string, 'success' | 'failed' | 'running' | 'queued'> = {
@@ -65,7 +67,10 @@ function formatDate(dateString: string) {
 export default function TrainingRuns() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [selectedRun, setSelectedRun] = useState<TrainingRun | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const activeTab = searchParams.get('tab') || 'active';
+  const highlightedId = searchParams.get('id');
 
   const activeRuns = trainingRuns.filter(r => r.status === 'running' || r.status === 'queued');
   const completedRuns = trainingRuns.filter(r => r.status === 'success' || r.status === 'failed');
@@ -74,6 +79,32 @@ export default function TrainingRuns() {
     run.name.toLowerCase().includes(search.toLowerCase()) ||
     run.client.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Open modal if id is in URL
+  useEffect(() => {
+    if (highlightedId) {
+      const run = trainingRuns.find(r => r.id === highlightedId);
+      if (run) {
+        setSelectedRun(run);
+        setModalOpen(true);
+      }
+    }
+  }, [highlightedId]);
+
+  const handleOpenDetails = (run: TrainingRun) => {
+    setSelectedRun(run);
+    setModalOpen(true);
+  };
+
+  const handleModalClose = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      // Remove id from URL when closing
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('id');
+      setSearchParams(newParams);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -122,11 +153,7 @@ export default function TrainingRuns() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="text-lg">
-                            <Link to={`/training-runs/${run.id}`} className="hover:text-primary transition-colors">
-                              {run.name}
-                            </Link>
-                          </CardTitle>
+                          <CardTitle className="text-lg">{run.name}</CardTitle>
                           <p className="text-sm text-muted-foreground mt-1">
                             {run.id} • {run.client}
                           </p>
@@ -163,11 +190,14 @@ export default function TrainingRuns() {
                         )}
 
                         <div className="flex gap-2 pt-2">
-                          <Button variant="outline" size="sm" asChild className="flex-1">
-                            <Link to={`/training-runs/${run.id}`}>
-                              <Eye className="mr-1 h-4 w-4" />
-                              View Details
-                            </Link>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleOpenDetails(run)}
+                          >
+                            <Eye className="mr-1 h-4 w-4" />
+                            View Details
                           </Button>
                           <Button variant="outline" size="sm" className="text-destructive">
                             <XCircle className="h-4 w-4" />
@@ -213,66 +243,76 @@ export default function TrainingRuns() {
                     <TableHead>Client</TableHead>
                     <TableHead>Started</TableHead>
                     <TableHead>Duration</TableHead>
-                    <TableHead>Data Gens</TableHead>
+                    <TableHead>Datasets</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCompleted.map((run) => (
-                    <TableRow key={run.id}>
-                      <TableCell>
-                        <Link 
-                          to={`/training-runs/${run.id}`}
-                          className="font-medium hover:text-primary transition-colors"
-                        >
-                          {run.name}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">{run.id}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadge(run.status)}>
-                          {run.status === 'success' && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                          {run.status === 'failed' && <XCircle className="mr-1 h-3 w-3" />}
-                          {run.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{run.client}</TableCell>
-                      <TableCell>{formatDate(run.startedAt)}</TableCell>
-                      <TableCell>{formatDuration(run.startedAt, run.completedAt)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{run.dataGenerations.length}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link to={`/training-runs/${run.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Re-run
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <BarChart3 className="mr-2 h-4 w-4" />
-                              Evaluate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredCompleted.map((run) => {
+                    const artifacts = modelArtifacts.filter(a => a.trainingRunId === run.id);
+                    return (
+                      <TableRow key={run.id}>
+                        <TableCell>
+                          <button
+                            onClick={() => handleOpenDetails(run)}
+                            className="font-medium hover:text-primary transition-colors text-left"
+                          >
+                            {run.name}
+                          </button>
+                          <p className="text-xs text-muted-foreground">{run.id}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadge(run.status)}>
+                            {run.status === 'success' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                            {run.status === 'failed' && <XCircle className="mr-1 h-3 w-3" />}
+                            {run.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{run.client}</TableCell>
+                        <TableCell>{formatDate(run.startedAt)}</TableCell>
+                        <TableCell>{formatDuration(run.startedAt, run.completedAt)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{run.dataGenerations.length}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {run.status === 'success' && artifacts.length > 0 && (
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link to={`/model-artifacts/${artifacts[0].id}`}>
+                                  <Package className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenDetails(run)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Re-run
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <BarChart3 className="mr-2 h-4 w-4" />
+                                  Evaluate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -284,6 +324,13 @@ export default function TrainingRuns() {
           <CreateTrainingForm />
         </TabsContent>
       </Tabs>
+
+      {/* Training Details Modal */}
+      <TrainingDetailsModal 
+        open={modalOpen} 
+        onOpenChange={handleModalClose} 
+        trainingRun={selectedRun} 
+      />
     </div>
   );
 }

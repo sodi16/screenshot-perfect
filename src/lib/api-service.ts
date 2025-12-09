@@ -208,14 +208,15 @@ function mapApiDatasetToDataGeneration(api: TrainingDataPreparationResponse): Da
     filters: {
       languages: api.languages || [],
       asrModelVersion: api.asr_model_version || '',
-      workflowId: api.workflow_ids?.[0] || '',
+      workflowIds: api.workflow_ids || null,
       isNoisy: api.is_noisy ?? null,
-      overlappingSpeech: api.overlapping_speech ?? false,
-      isNotRelevant: api.is_not_relevant ?? false,
-      isVoiceRecordingNa: api.is_voice_recording_na ?? false,
-      clientList: api.customer_name ? [api.customer_name] : [],
-      werFinal: 0,
+      overlappingSpeech: api.overlapping_speech ?? null,
+      isNotRelevant: api.is_not_relevant ?? null,
+      isVoiceRecordingNa: api.is_voice_recording_na ?? null,
     },
+    trainS3Path: trainFile?.s3_path || '',
+    testS3Path: testFile?.s3_path || '',
+    valS3Path: valFile?.s3_path || '',
   };
 }
 
@@ -240,6 +241,9 @@ function mapApiTrainingToTrainingRun(api: TrainingExecutionResponse): TrainingRu
     dataGenerations: [],
     s3Path: api.s3_output_path || '',
     description: api.description || '',
+    errorMessage: api.error_message || null,
+    prefectRunId: api.prefect_run_id || null,
+    tenantId: api.tenant_id || 0,
     parameters: {
       hyperparameters: (api.hyperparameters as TrainingRun['parameters']['hyperparameters']) || {
         batchSize: 32,
