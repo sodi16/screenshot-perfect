@@ -105,6 +105,9 @@ export interface TrainingExecutionResponse {
   hyperparameters?: Record<string, unknown>;
   prefect_parameters?: Record<string, unknown>;
   s3_output_path?: string;
+  error_message?: string;
+  prefect_run_id?: string;
+  tenant_id?: number;
   created_at: string;
   updated_at?: string;
 }
