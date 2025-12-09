@@ -12,7 +12,9 @@ import TrainingRuns from "./pages/TrainingRuns";
 import Datasets from "./pages/Datasets";
 import DatasetDetail from "./pages/DatasetDetail";
 import ModelArtifacts from "./pages/ModelArtifacts";
+import ModelArtifactDetail from "./pages/ModelArtifactDetail";
 import Evaluations from "./pages/Evaluations";
+import EvaluationDetail from "./pages/EvaluationDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -44,9 +46,11 @@ function AppRoutes() {
         <Route path="/datasets" element={<Datasets />} />
         <Route path="/datasets/:datasetId" element={<DatasetDetail />} />
         <Route path="/model-artifacts" element={<ModelArtifacts />} />
+        <Route path="/model-artifacts/:artifactId" element={<ModelArtifactDetail />} />
         <Route path="/evaluations" element={<Evaluations />} />
+        <Route path="/evaluations/:evaluationId" element={<EvaluationDetail />} />
         <Route path="/settings" element={<Settings />} />
-        {/* Redirect old route */}
+        {/* Redirect old routes */}
         <Route path="/data-generations" element={<Navigate to="/datasets" replace />} />
         <Route path="/data-generations/:id" element={<Navigate to="/datasets/:id" replace />} />
       </Route>

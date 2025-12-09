@@ -6,9 +6,7 @@ import {
   Copy, 
   FileText, 
   Filter,
-  Play,
-  Trash2,
-  Download
+  ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,12 +53,21 @@ export default function DatasetDetail() {
     run.dataGenerations.includes(dataset.id)
   );
 
-  // Mock files data
+  // Files data with individual S3 links
   const files = [
-    { name: 'train.jsonl', type: 'Train', records: dataset.trainRecords, size: '2.4 GB' },
-    { name: 'test.jsonl', type: 'Test', records: dataset.testRecords, size: '680 MB' },
-    { name: 'validation.jsonl', type: 'Validation', records: dataset.valRecords, size: '340 MB' },
+    { name: 'train.csv', type: 'Train', records: dataset.trainRecords, size: '2.4 GB', s3Link: dataset.trainS3Path },
+    { name: 'test.csv', type: 'Test', records: dataset.testRecords, size: '680 MB', s3Link: dataset.testS3Path },
+    { name: 'val.csv', type: 'Validation', records: dataset.valRecords, size: '340 MB', s3Link: dataset.valS3Path },
   ];
+
+  // Check which filters are actually applied (non-null values)
+  const hasLanguages = dataset.filters.languages && dataset.filters.languages.length > 0;
+  const hasWorkflowIds = dataset.filters.workflowIds && dataset.filters.workflowIds.length > 0;
+  const hasIsNoisy = dataset.filters.isNoisy !== null;
+  const hasOverlappingSpeech = dataset.filters.overlappingSpeech !== null;
+  const hasIsNotRelevant = dataset.filters.isNotRelevant !== null;
+  const hasIsVoiceRecordingNa = dataset.filters.isVoiceRecordingNa !== null;
+  const hasAudioFilters = hasIsNoisy || hasOverlappingSpeech || hasIsNotRelevant || hasIsVoiceRecordingNa;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -77,16 +84,10 @@ export default function DatasetDetail() {
             <span className="text-sm text-muted-foreground">{dataset.id}</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => copyToClipboard(dataset.s3Path)}>
-            <Copy className="mr-2 h-4 w-4" />
-            Copy S3 Path
-          </Button>
-          <Button variant="glow">
-            <Play className="mr-2 h-4 w-4" />
-            Use in Training
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => copyToClipboard(dataset.s3Path)}>
+          <Copy className="mr-2 h-4 w-4" />
+          Copy S3 Path
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -139,7 +140,7 @@ export default function DatasetDetail() {
                     <TableHead>Type</TableHead>
                     <TableHead>Records</TableHead>
                     <TableHead>Size</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>S3 Link</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -151,9 +152,15 @@ export default function DatasetDetail() {
                       </TableCell>
                       <TableCell>{file.records.toLocaleString()}</TableCell>
                       <TableCell>{file.size}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="gap-1 text-primary"
+                          onClick={() => copyToClipboard(file.s3Link)}
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -208,7 +215,7 @@ export default function DatasetDetail() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Filters Used Card */}
+          {/* Filters Used Card - Only show filters that were applied */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -217,62 +224,88 @@ export default function DatasetDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Date Range - Always shown as it's required */}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Date Range</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{dataset.dateRangeStart} - {dataset.dateRangeEnd}</span>
+                  <span className="text-sm">{dataset.dateRangeStart} → {dataset.dateRangeEnd}</span>
                 </div>
               </div>
               
               <Separator />
               
+              {/* ASR Model Version - Always shown as it's required */}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">ASR Model Version</p>
                 <p className="text-sm mt-1">{dataset.filters.asrModelVersion}</p>
               </div>
               
-              <Separator />
-              
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Languages</p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {dataset.filters.languages.map(lang => (
-                    <Badge key={lang} variant="secondary" className="text-xs">{lang}</Badge>
-                  ))}
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Audio Filters</p>
-                <div className="space-y-1 mt-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Is Noisy</span>
-                    <span>{dataset.filters.isNoisy === null ? 'Any' : dataset.filters.isNoisy ? 'Yes' : 'No'}</span>
+              {/* Languages - Only show if applied */}
+              {hasLanguages && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Languages</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {dataset.filters.languages!.map(lang => (
+                        <Badge key={lang} variant="secondary" className="text-xs">{lang}</Badge>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Overlapping Speech</span>
-                    <span>{dataset.filters.overlappingSpeech ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Is Not Relevant</span>
-                    <span>{dataset.filters.isNotRelevant ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Voice Recording N/A</span>
-                    <span>{dataset.filters.isVoiceRecordingNa ? 'Yes' : 'No'}</span>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
               
-              <Separator />
+              {/* Audio Filters - Only show if any are applied */}
+              {hasAudioFilters && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Audio Filters</p>
+                    <div className="space-y-1 mt-1 text-sm">
+                      {hasIsNoisy && (
+                        <div className="flex justify-between">
+                          <span>Is Noisy</span>
+                          <span>{dataset.filters.isNoisy ? 'Yes' : 'No'}</span>
+                        </div>
+                      )}
+                      {hasOverlappingSpeech && (
+                        <div className="flex justify-between">
+                          <span>Overlapping Speech</span>
+                          <span>{dataset.filters.overlappingSpeech ? 'Yes' : 'No'}</span>
+                        </div>
+                      )}
+                      {hasIsNotRelevant && (
+                        <div className="flex justify-between">
+                          <span>Is Not Relevant</span>
+                          <span>{dataset.filters.isNotRelevant ? 'Yes' : 'No'}</span>
+                        </div>
+                      )}
+                      {hasIsVoiceRecordingNa && (
+                        <div className="flex justify-between">
+                          <span>Voice Recording N/A</span>
+                          <span>{dataset.filters.isVoiceRecordingNa ? 'Yes' : 'No'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
               
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Workflow ID</p>
-                <p className="text-sm font-mono mt-1 break-all">{dataset.filters.workflowId || 'Not specified'}</p>
-              </div>
+              {/* Workflow IDs - Only show if applied */}
+              {hasWorkflowIds && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Workflow IDs</p>
+                    <div className="space-y-1 mt-1">
+                      {dataset.filters.workflowIds!.map(id => (
+                        <p key={id} className="text-sm font-mono break-all">{id}</p>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -295,19 +328,6 @@ export default function DatasetDetail() {
                 <p className="text-sm font-medium text-muted-foreground">Created At</p>
                 <p className="text-sm mt-1">{new Date(dataset.createdAt).toLocaleString()}</p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Danger Zone */}
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button variant="destructive" className="w-full">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Dataset
-              </Button>
             </CardContent>
           </Card>
         </div>

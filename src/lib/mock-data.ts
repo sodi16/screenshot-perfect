@@ -16,6 +16,9 @@ export interface TrainingRun {
   dataGenerations: string[];
   s3Path: string;
   description: string;
+  errorMessage: string | null;
+  prefectRunId: string | null;
+  tenantId: number;
   parameters: {
     hyperparameters: {
       batchSize: number;
@@ -44,6 +47,9 @@ export const trainingRuns: TrainingRun[] = [
     dataGenerations: ['data_gen_001', 'data_gen_002'],
     s3Path: 's3://aiola-models/customer-a/train_001/',
     description: 'Quarterly model update with improved accuracy',
+    errorMessage: null,
+    prefectRunId: 'prefect_abc123',
+    tenantId: 1,
     parameters: {
       hyperparameters: { batchSize: 32, learningRate: 0.001, epochs: 50, optimizer: 'Adam' },
       prefectParams: { gpuType: 'V100', instanceType: 'p3.2xlarge', memory: '16GB' },
@@ -61,6 +67,9 @@ export const trainingRuns: TrainingRun[] = [
     dataGenerations: ['data_gen_003'],
     s3Path: 's3://aiola-models/customer-b/train_002/',
     description: 'Training on multiple languages',
+    errorMessage: null,
+    prefectRunId: 'prefect_def456',
+    tenantId: 2,
     parameters: {
       hyperparameters: { batchSize: 64, learningRate: 0.0005, epochs: 100, optimizer: 'AdamW' },
       prefectParams: { gpuType: 'A100', instanceType: 'p4d.24xlarge', memory: '32GB' },
@@ -78,6 +87,9 @@ export const trainingRuns: TrainingRun[] = [
     dataGenerations: ['data_gen_001'],
     s3Path: 's3://aiola-models/customer-a/train_003/',
     description: 'Testing new preprocessing pipeline',
+    errorMessage: 'CUDA out of memory. Tried to allocate 2.00 GiB. GPU memory usage: 14.5 GiB / 16.0 GiB',
+    prefectRunId: 'prefect_ghi789',
+    tenantId: 1,
     parameters: {
       hyperparameters: { batchSize: 16, learningRate: 0.01, epochs: 10, optimizer: 'SGD' },
       prefectParams: { gpuType: 'T4', instanceType: 'g4dn.xlarge', memory: '8GB' },
@@ -95,6 +107,9 @@ export const trainingRuns: TrainingRun[] = [
     dataGenerations: ['data_gen_002'],
     s3Path: 's3://aiola-models/customer-c/train_004/',
     description: 'New client onboarding model',
+    errorMessage: null,
+    prefectRunId: null,
+    tenantId: 3,
     parameters: {
       hyperparameters: { batchSize: 32, learningRate: 0.001, epochs: 75, optimizer: 'Adam' },
       prefectParams: { gpuType: 'V100', instanceType: 'p3.2xlarge', memory: '16GB' },
@@ -114,17 +129,18 @@ export interface DataGeneration {
   testRecords: number;
   valRecords: number;
   s3Path: string;
+  trainS3Path: string;
+  testS3Path: string;
+  valS3Path: string;
   createdAt: string;
   filters: {
-    languages: string[];
+    languages: string[] | null;
     asrModelVersion: string;
-    workflowId: string;
+    workflowIds: string[] | null;
     isNoisy: boolean | null;
-    overlappingSpeech: boolean;
-    isNotRelevant: boolean;
-    isVoiceRecordingNa: boolean;
-    clientList: string[];
-    werFinal: number;
+    overlappingSpeech: boolean | null;
+    isNotRelevant: boolean | null;
+    isVoiceRecordingNa: boolean | null;
   };
 }
 
@@ -140,17 +156,18 @@ export const dataGenerations: DataGeneration[] = [
     testRecords: 10000,
     valRecords: 5000,
     s3Path: 's3://aiola-datasets/customer-a/q4-2024/',
+    trainS3Path: 's3://aiola-datasets/customer-a/q4-2024/train.csv',
+    testS3Path: 's3://aiola-datasets/customer-a/q4-2024/test.csv',
+    valS3Path: 's3://aiola-datasets/customer-a/q4-2024/val.csv',
     createdAt: '2025-01-10T12:00:00Z',
     filters: {
       languages: ['English', 'Spanish'],
       asrModelVersion: 'v2.0',
-      workflowId: 'wf_12345',
+      workflowIds: ['wf_12345'],
       isNoisy: false,
       overlappingSpeech: false,
-      isNotRelevant: false,
-      isVoiceRecordingNa: false,
-      clientList: ['Customer A'],
-      werFinal: 0.15
+      isNotRelevant: null,
+      isVoiceRecordingNa: null
     }
   },
   {
@@ -164,17 +181,18 @@ export const dataGenerations: DataGeneration[] = [
     testRecords: 2400,
     valRecords: 1200,
     s3Path: 's3://aiola-datasets/customer-a/jan-2025/',
+    trainS3Path: 's3://aiola-datasets/customer-a/jan-2025/train.csv',
+    testS3Path: 's3://aiola-datasets/customer-a/jan-2025/test.csv',
+    valS3Path: 's3://aiola-datasets/customer-a/jan-2025/val.csv',
     createdAt: '2025-01-16T09:00:00Z',
     filters: {
       languages: ['English'],
       asrModelVersion: 'v2.1',
-      workflowId: 'wf_12346',
+      workflowIds: null,
       isNoisy: null,
-      overlappingSpeech: false,
-      isNotRelevant: false,
-      isVoiceRecordingNa: false,
-      clientList: ['Customer A'],
-      werFinal: 0.12
+      overlappingSpeech: null,
+      isNotRelevant: null,
+      isVoiceRecordingNa: null
     }
   },
   {
@@ -188,17 +206,18 @@ export const dataGenerations: DataGeneration[] = [
     testRecords: 16000,
     valRecords: 8000,
     s3Path: 's3://aiola-datasets/customer-b/multilingual/',
+    trainS3Path: 's3://aiola-datasets/customer-b/multilingual/train.csv',
+    testS3Path: 's3://aiola-datasets/customer-b/multilingual/test.csv',
+    valS3Path: 's3://aiola-datasets/customer-b/multilingual/val.csv',
     createdAt: '2025-01-18T14:00:00Z',
     filters: {
       languages: ['English', 'Spanish', 'French', 'German'],
       asrModelVersion: 'v2.1',
-      workflowId: 'wf_12347',
+      workflowIds: ['wf_12347', 'wf_12348'],
       isNoisy: false,
       overlappingSpeech: true,
       isNotRelevant: false,
-      isVoiceRecordingNa: false,
-      clientList: ['Customer B'],
-      werFinal: 0.18
+      isVoiceRecordingNa: false
     }
   }
 ];
@@ -209,6 +228,7 @@ export interface Evaluation {
   testDataGenerationId: string;
   evaluationType: string;
   status: string;
+  errorMessage: string | null;
   metrics: {
     accuracy: number;
     wer: number;
@@ -217,6 +237,7 @@ export interface Evaluation {
   };
   evaluatedAt: string;
   s3ResultsPath: string;
+  tenantId: number;
 }
 
 export const evaluations: Evaluation[] = [
@@ -226,9 +247,11 @@ export const evaluations: Evaluation[] = [
     testDataGenerationId: 'data_gen_002',
     evaluationType: 'WER',
     status: 'completed',
+    errorMessage: null,
     metrics: { accuracy: 0.94, wer: 0.12, precision: 0.93, recall: 0.95 },
     evaluatedAt: '2025-01-16T10:00:00Z',
-    s3ResultsPath: 's3://aiola-evaluations/train_001/eval_001/'
+    s3ResultsPath: 's3://aiola-evaluations/train_001/eval_001/',
+    tenantId: 1
   },
   {
     id: 'eval_002',
@@ -236,16 +259,21 @@ export const evaluations: Evaluation[] = [
     testDataGenerationId: 'data_gen_001',
     evaluationType: 'Accuracy',
     status: 'completed',
+    errorMessage: null,
     metrics: { accuracy: 0.96, wer: 0.10, precision: 0.95, recall: 0.97 },
     evaluatedAt: '2025-01-15T15:00:00Z',
-    s3ResultsPath: 's3://aiola-evaluations/train_001/eval_002/'
+    s3ResultsPath: 's3://aiola-evaluations/train_001/eval_002/',
+    tenantId: 1
   }
 ];
+
+export type ModelType = 'trtllm' | 'weights';
 
 export interface ModelArtifact {
   id: string;
   trainingRunId: string;
   artifactType: string;
+  modelType: ModelType;
   modelFormat: string;
   s3Path: string;
   sizeMb: number;
@@ -257,6 +285,7 @@ export const modelArtifacts: ModelArtifact[] = [
     id: 'artifact_001',
     trainingRunId: 'train_001',
     artifactType: 'model',
+    modelType: 'trtllm',
     modelFormat: 'Triton',
     s3Path: 's3://aiola-models/customer-a/train_001/model.tar.gz',
     sizeMb: 245.5,
@@ -266,6 +295,7 @@ export const modelArtifacts: ModelArtifact[] = [
     id: 'artifact_002',
     trainingRunId: 'train_001',
     artifactType: 'checkpoint',
+    modelType: 'weights',
     modelFormat: 'Triton',
     s3Path: 's3://aiola-models/customer-a/train_001/checkpoint_best.pt',
     sizeMb: 122.3,

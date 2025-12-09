@@ -1,8 +1,7 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
   Plus, 
-  Eye,
   CheckCircle2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +32,12 @@ function formatPercent(value: number) {
 }
 
 export default function Evaluations() {
+  const navigate = useNavigate();
+
+  const handleRowClick = (evaluationId: string) => {
+    navigate(`/evaluations/${evaluationId}`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -106,7 +111,6 @@ export default function Evaluations() {
                 <TableHead>Accuracy</TableHead>
                 <TableHead>WER</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -114,24 +118,14 @@ export default function Evaluations() {
                 const run = trainingRuns.find(r => r.id === evalItem.trainingRunId);
                 const dataGen = dataGenerations.find(d => d.id === evalItem.testDataGenerationId);
                 return (
-                  <TableRow key={evalItem.id}>
+                  <TableRow 
+                    key={evalItem.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleRowClick(evalItem.id)}
+                  >
                     <TableCell className="font-medium">{evalItem.id}</TableCell>
-                    <TableCell>
-                      <Link 
-                        to={`/training-runs/${evalItem.trainingRunId}`}
-                        className="hover:text-primary transition-colors"
-                      >
-                        {run?.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Link 
-                        to={`/data-generations/${evalItem.testDataGenerationId}`}
-                        className="hover:text-primary transition-colors"
-                      >
-                        {dataGen?.name}
-                      </Link>
-                    </TableCell>
+                    <TableCell>{run?.name}</TableCell>
+                    <TableCell>{dataGen?.name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{evalItem.evaluationType}</Badge>
                     </TableCell>
@@ -142,11 +136,6 @@ export default function Evaluations() {
                       <span className="font-mono">{formatPercent(evalItem.metrics.wer)}</span>
                     </TableCell>
                     <TableCell>{formatDate(evalItem.evaluatedAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })}
