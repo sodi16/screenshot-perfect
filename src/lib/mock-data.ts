@@ -1,6 +1,84 @@
+import type { TenantMapping, WorkflowInfo, TRTLLMModel, ModelArtifactResponse } from './api-types';
+
 export const users = [
   { id: '1', username: 'john.doe', email: 'john@aiola.com', avatar: '' },
   { id: '2', username: 'jane.smith', email: 'jane@aiola.com', avatar: '' }
+];
+
+// ========== Tenant Mappings ==========
+export const tenantMappings: TenantMapping[] = [
+  { tenant_id: 1, tenant_name: 'Customer A', cells: 'US-EAST' },
+  { tenant_id: 2, tenant_name: 'Customer B', cells: 'EU-WEST' },
+  { tenant_id: 3, tenant_name: 'Customer C', cells: 'US-WEST' },
+  { tenant_id: 4, tenant_name: 'Customer D', cells: 'APAC' },
+];
+
+// ========== Workflows by Tenant ==========
+export const workflowsByTenant: Record<number, WorkflowInfo[]> = {
+  1: [
+    { workflow_id: 'wf_12345', workflow_name: 'Main Production Workflow' },
+    { workflow_id: 'wf_12346', workflow_name: 'Voice Recording Pipeline' },
+    { workflow_id: 'wf_12347', workflow_name: 'QA Testing Workflow' },
+  ],
+  2: [
+    { workflow_id: 'wf_22345', workflow_name: 'Multilingual Processing' },
+    { workflow_id: 'wf_22346', workflow_name: 'European Transcription' },
+  ],
+  3: [
+    { workflow_id: 'wf_32345', workflow_name: 'Customer Service Recording' },
+  ],
+  4: [
+    { workflow_id: 'wf_42345', workflow_name: 'APAC Voice Pipeline' },
+    { workflow_id: 'wf_42346', workflow_name: 'Japanese Transcription' },
+    { workflow_id: 'wf_42347', workflow_name: 'Korean ASR Pipeline' },
+  ],
+};
+
+// ========== TRTLLM Models (ASR Models) ==========
+export const trtllmModels: TRTLLMModel[] = [
+  { artifact_id: 'asr_001', training_execution_id: 'train_001', s3_path: 's3://models/whisper-v2.0', model_size_mb: 1500, created_at: '2024-12-01T10:00:00Z' },
+  { artifact_id: 'asr_002', training_execution_id: 'train_002', s3_path: 's3://models/whisper-v2.1', model_size_mb: 1600, created_at: '2025-01-01T10:00:00Z' },
+  { artifact_id: 'asr_003', training_execution_id: 'train_003', s3_path: 's3://models/whisper-large-v3', model_size_mb: 2500, created_at: '2025-01-10T10:00:00Z' },
+];
+
+// ========== Base Model Artifacts (RAW_WEIGHT) ==========
+export const baseModelArtifacts: ModelArtifactResponse[] = [
+  { 
+    artifact_id: 'base_001', 
+    training_execution_id: 'train_base_001', 
+    training_execution_name: 'Whisper Large V2 Base',
+    artifact_type: 'RAW_WEIGHT', 
+    s3_path: 's3://models/base/whisper-large-v2', 
+    model_size_mb: 1500, 
+    created_at: '2024-06-01T10:00:00Z' 
+  },
+  { 
+    artifact_id: 'base_002', 
+    training_execution_id: 'train_base_002', 
+    training_execution_name: 'Whisper Large V3 Base',
+    artifact_type: 'RAW_WEIGHT', 
+    s3_path: 's3://models/base/whisper-large-v3', 
+    model_size_mb: 2500, 
+    created_at: '2024-10-01T10:00:00Z' 
+  },
+  { 
+    artifact_id: 'base_003', 
+    training_execution_id: 'train_base_003', 
+    training_execution_name: 'Customer A Fine-tuned v1',
+    artifact_type: 'RAW_WEIGHT', 
+    s3_path: 's3://models/customer-a/finetuned-v1', 
+    model_size_mb: 1550, 
+    created_at: '2025-01-05T10:00:00Z' 
+  },
+  { 
+    artifact_id: 'trtllm_001', 
+    training_execution_id: 'train_001', 
+    training_execution_name: 'Customer A ASR Model v2.1',
+    artifact_type: 'TRTLLM', 
+    s3_path: 's3://models/customer-a/trtllm-v1', 
+    model_size_mb: 800, 
+    created_at: '2025-01-15T14:30:00Z' 
+  },
 ];
 
 export type TrainingStatus = 'running' | 'success' | 'failed' | 'queued';
@@ -135,12 +213,14 @@ export interface DataGeneration {
   createdAt: string;
   filters: {
     languages: string[] | null;
-    asrModelVersion: string;
+    asrModelVersions: string[] | null;
     workflowIds: string[] | null;
     isNoisy: boolean | null;
     overlappingSpeech: boolean | null;
     isNotRelevant: boolean | null;
     isVoiceRecordingNa: boolean | null;
+    isPartialAudio: boolean | null;
+    isUnclearAudio: boolean | null;
   };
 }
 
@@ -162,12 +242,14 @@ export const dataGenerations: DataGeneration[] = [
     createdAt: '2025-01-10T12:00:00Z',
     filters: {
       languages: ['English', 'Spanish'],
-      asrModelVersion: 'v2.0',
+      asrModelVersions: ['v2.0'],
       workflowIds: ['wf_12345'],
       isNoisy: false,
       overlappingSpeech: false,
       isNotRelevant: null,
-      isVoiceRecordingNa: null
+      isVoiceRecordingNa: null,
+      isPartialAudio: null,
+      isUnclearAudio: null
     }
   },
   {
@@ -187,12 +269,14 @@ export const dataGenerations: DataGeneration[] = [
     createdAt: '2025-01-16T09:00:00Z',
     filters: {
       languages: ['English'],
-      asrModelVersion: 'v2.1',
+      asrModelVersions: ['v2.1'],
       workflowIds: null,
       isNoisy: null,
       overlappingSpeech: null,
       isNotRelevant: null,
-      isVoiceRecordingNa: null
+      isVoiceRecordingNa: null,
+      isPartialAudio: false,
+      isUnclearAudio: false
     }
   },
   {
@@ -212,12 +296,14 @@ export const dataGenerations: DataGeneration[] = [
     createdAt: '2025-01-18T14:00:00Z',
     filters: {
       languages: ['English', 'Spanish', 'French', 'German'],
-      asrModelVersion: 'v2.1',
-      workflowIds: ['wf_12347', 'wf_12348'],
+      asrModelVersions: ['v2.1'],
+      workflowIds: ['wf_22345', 'wf_22346'],
       isNoisy: false,
       overlappingSpeech: true,
       isNotRelevant: false,
-      isVoiceRecordingNa: false
+      isVoiceRecordingNa: false,
+      isPartialAudio: null,
+      isUnclearAudio: null
     }
   }
 ];

@@ -235,11 +235,17 @@ export default function DatasetDetail() {
               
               <Separator />
               
-              {/* ASR Model Version - Always shown as it's required */}
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">ASR Model Version</p>
-                <p className="text-sm mt-1">{dataset.filters.asrModelVersion}</p>
-              </div>
+              {/* ASR Model Versions - Only show if applied */}
+              {dataset.filters.asrModelVersions && dataset.filters.asrModelVersions.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">ASR Model Versions</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {dataset.filters.asrModelVersions.map(v => (
+                      <Badge key={v} variant="secondary" className="text-xs">{v}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {/* Languages - Only show if applied */}
               {hasLanguages && (

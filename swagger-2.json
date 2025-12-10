@@ -1,0 +1,3287 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AI Model Training",
+    "description": "Backend API for AI Model Training Operations",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/auth/test-no-auth": {
+      "get": {
+        "tags": [
+          "auth",
+          "training_data_preparation"
+        ],
+        "summary": "Test No Auth",
+        "description": "Test endpoint without any authentication - should work without auth.",
+        "operationId": "test_no_auth_auth_test_no_auth_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": [
+          "auth",
+          "auth"
+        ],
+        "summary": "Google Auth",
+        "description": "Authenticate user with Google OAuth 2.0 token.\n\nFlow:\n1. Verify Google token\n2. Validate email domain\n3. Get or create user\n4. Generate JWT tokens\n\nArgs:\n    request: Google OAuth token\n    db: Database session\n    auth_service: Auth service\n    \nReturns:\n    JWT access and refresh tokens with user info",
+        "operationId": "google_auth_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth",
+          "auth"
+        ],
+        "summary": "Refresh Token",
+        "description": "Refresh JWT access token using refresh token.\n\nArgs:\n    request: Refresh token\n    db: Database session\n    auth_service: Auth service\n    \nReturns:\n    New access and refresh tokens",
+        "operationId": "refresh_token_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth",
+          "auth"
+        ],
+        "summary": "Get Current User Info",
+        "description": "Get current authenticated user information.\n\nArgs:\n    current_user: Current user from dependency\n    \nReturns:\n    User information",
+        "operationId": "get_current_user_info_auth_me_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/start": {
+      "post": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Create And Start Training",
+        "description": "Create a new training execution and optionally start it.\n\nArgs:\n    data: Training execution data\n    current_user: Current authenticated user\n    db: Database session\n    training_service: Training service\n    \nReturns:\n    Created training execution",
+        "operationId": "create_and_start_training_training_start_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainingExecutionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/start/{training_execution_id}": {
+      "post": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Start Training",
+        "description": "Start an existing training execution.\n\nArgs:\n    training_execution_id: Training execution ID\n    force_restart: Force restart if already running\n    current_user: Current authenticated user\n    db: Database session\n    training_service: Training service\n    \nReturns:\n    Success message",
+        "operationId": "start_training_training_start__training_execution_id__post",
+        "parameters": [
+          {
+            "name": "training_execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Training Execution Id"
+            }
+          },
+          {
+            "name": "force_restart",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Force restart if already running",
+              "default": false,
+              "title": "Force Restart"
+            },
+            "description": "Force restart if already running"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Start Training Training Start  Training Execution Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/{training_execution_id}": {
+      "get": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Get Training Execution",
+        "description": "Get training execution details by ID.\n\nArgs:\n    training_execution_id: Training execution ID\n    current_user: Current authenticated user\n    db: Database session\n    training_service: Training service\n    \nReturns:\n    Training execution details",
+        "operationId": "get_training_execution_training__training_execution_id__get",
+        "parameters": [
+          {
+            "name": "training_execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Training Execution Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Delete Training Execution",
+        "description": "Delete a training execution.\n\nArgs:\n    training_execution_id: Training execution ID\n    current_user: Current authenticated user\n    db: Database session\n    training_service: Training service\n    \nReturns:\n    Success message",
+        "operationId": "delete_training_execution_training__training_execution_id__delete",
+        "parameters": [
+          {
+            "name": "training_execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Training Execution Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Training Execution Training  Training Execution Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/": {
+      "get": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "List Training Executions",
+        "description": "List training executions with filters and pagination.\n\nArgs:\n    status_filter: Filter by status\n    tenant_id: Filter by tenant_id\n    page: Page number\n    page_size: Items per page\n    current_user: Current authenticated user\n    db: Database session\n    training_service: Training service\n    \nReturns:\n    Paginated list of training executions",
+        "operationId": "list_training_executions_training__get",
+        "parameters": [
+          {
+            "name": "status_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StatusEnum"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status Filter"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by tenant_id",
+              "title": "Tenant Id"
+            },
+            "description": "Filter by tenant_id"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Items per page",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Items per page"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_TrainingExecutionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/abort": {
+      "post": {
+        "tags": [
+          "training",
+          "training"
+        ],
+        "summary": "Abort Training",
+        "description": "Abort a running training execution.\n\nArgs:\n    data: Abort request with training ID and reason\n    current_user: Current authenticated user\n    db: Database session\n    training_service: Training service\n    \nReturns:\n    Success message",
+        "operationId": "abort_training_training_abort_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainingAbort"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Abort Training Training Abort Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/tenant_ids_mapping": {
+      "get": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Get Tenant Ids Mapping",
+        "description": "Get all tenant IDs and mappings from Snowflake US region.\n\nArgs:\n    sf_service_us_infra: Snowflake service (US infra region)\n    current_user: UserModel a\n\nReturns:\n    List of tenant mappings with tenant_id, tenant_name, and cells",
+        "operationId": "get_tenant_ids_mapping_training_data_tenant_ids_mapping_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantMapping"
+                  },
+                  "type": "array",
+                  "title": "Response Get Tenant Ids Mapping Training Data Tenant Ids Mapping Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/tenant/{tenant_id}/workflow_ids": {
+      "get": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Get Tenant Workflow Ids",
+        "description": "Get workflow IDs and names for a specific tenant.\n\nArgs:\n    tenant_id: Tenant ID\n    sf_service: Snowflake service\n    current_user: Current authenticated user\n\nReturns:\n    List of workflows with workflow_id and workflow_name",
+        "operationId": "get_tenant_workflow_ids_training_data_tenant__tenant_id__workflow_ids_get",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowInfo"
+                  },
+                  "title": "Response Get Tenant Workflow Ids Training Data Tenant  Tenant Id  Workflow Ids Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/trtllm_models": {
+      "get": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Get All Trtllm Models",
+        "description": "Get all TRTLLM model artifacts.\n\nArgs:\n    current_user: Current authenticated user\n    db: Database session\n    \nReturns:\n    List of TRTLLM model artifacts",
+        "operationId": "get_all_trtllm_models_training_data_trtllm_models_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TRTLLMModel"
+                  },
+                  "title": "Response Get All Trtllm Models Training Data Trtllm Models Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/filter": {
+      "post": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Filter Training Data",
+        "description": "Manually fetch data from Snowflake based on filters.\nData is cached for preview and later saving.\n\nArgs:\n    request: Fetch request with Snowflake filters\n    current_user: Current authenticated user\n    training_data_service: Training data preparation service\n    \nReturns:\n    Fetch response with preview and cache ID",
+        "operationId": "filter_training_data_training_data_filter_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainingDataPreparationFilterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingDataPreparationFilterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/save_fetched_data": {
+      "post": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Save Fetched Data",
+        "description": "Save previously fetched data to S3 and create TrainingDataPreparation record.\n\nArgs:\n    request: Save request with fetch ID and metadata\n    current_user: Current authenticated user\n    db: Database session\n    training_data_service: Training data preparation service\n    \nReturns:\n    Created training data preparation info",
+        "operationId": "save_fetched_data_training_data_save_fetched_data_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFetchedDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveFetchedDataResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/process": {
+      "post": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Process Data",
+        "description": "Apply preprocessing methods to training data.\n\nArgs:\n    request: Process request with methods list\n    current_user: Current authenticated user\n    db: Database session\n    training_data_service: Training data preparation service\n    \nReturns:\n    Processing status\n    \nNote: This is a stub implementation. Actual preprocessing should be\nimplemented based on specific requirements.",
+        "operationId": "process_data_training_data_process_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/prepare": {
+      "post": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Prepare Data",
+        "description": "Prepare data by splitting into train/test/val sets.\n\nArgs:\n    request: Prepare request with split configuration\n    current_user: Current authenticated user\n    db: Database session\n    training_data_service: Training data preparation service\n    \nReturns:\n    Prepare response with file IDs and S3 paths\n    \nNote: This is a stub implementation. Actual split logic should be\nimplemented based on data size and requirements.",
+        "operationId": "prepare_data_training_data_prepare_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/{training_data_preparation_id}": {
+      "get": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Get Training Data Preparation",
+        "description": "Get training data preparation details by ID.\n\nArgs:\n    training_data_preparation_id: Preparation ID\n    current_user: Current authenticated user\n    db: Database session\n    training_data_service: Training data preparation service\n    \nReturns:\n    Training data preparation details",
+        "operationId": "get_training_data_preparation_training_data__training_data_preparation_id__get",
+        "parameters": [
+          {
+            "name": "training_data_preparation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Training Data Preparation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingDataPreparationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "Delete Training Data Preparation",
+        "description": "Delete a training data preparation.\n\nArgs:\n    training_data_preparation_id: Preparation ID\n    current_user: Current authenticated user\n    db: Database session\n    training_data_service: Training data preparation service\n    \nReturns:\n    Success message",
+        "operationId": "delete_training_data_preparation_training_data__training_data_preparation_id__delete",
+        "parameters": [
+          {
+            "name": "training_data_preparation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Training Data Preparation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Training Data Preparation Training Data  Training Data Preparation Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training_data/": {
+      "get": {
+        "tags": [
+          "training_data",
+          "training_data_preparation"
+        ],
+        "summary": "List Training Data Preparations",
+        "description": "List training data preparations with filters and pagination.\n\nArgs:\n    customer_name: Filter by customer name\n    page: Page number\n    page_size: Items per page\n    current_user: Current authenticated user\n    db: Database session\n    training_data_service: Training data preparation service\n    \nReturns:\n    Paginated list of training data preparations",
+        "operationId": "list_training_data_preparations_training_data__get",
+        "parameters": [
+          {
+            "name": "customer_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by customer name",
+              "title": "Customer Name"
+            },
+            "description": "Filter by customer name"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Items per page",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Items per page"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_TrainingDataPreparationResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model_artifacts/": {
+      "get": {
+        "tags": [
+          "model_artifacts",
+          "model_artifacts"
+        ],
+        "summary": "Get All Model Artifacts",
+        "description": "Get all model artifacts with their training execution details.\n\nArgs:\n    db: Database session\n    service: Model artifact service\n    \nReturns:\n    List of all model artifacts with training execution names",
+        "operationId": "get_all_model_artifacts_model_artifacts__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModelArtifactResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get All Model Artifacts Model Artifacts  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model_artifacts/{artifact_id}": {
+      "get": {
+        "tags": [
+          "model_artifacts",
+          "model_artifacts"
+        ],
+        "summary": "Get Model Artifact",
+        "description": "Get a specific model artifact by ID with training execution details.\n\nArgs:\n    artifact_id: Model artifact UUID\n    db: Database session\n    service: Model artifact service\n    \nReturns:\n    Model artifact with training execution name",
+        "operationId": "get_model_artifact_model_artifacts__artifact_id__get",
+        "parameters": [
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Artifact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelArtifactResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model_artifacts/by-type": {
+      "get": {
+        "tags": [
+          "model_artifacts",
+          "model_artifacts"
+        ],
+        "summary": "Get Model Artifacts By Type",
+        "description": "Get all model artifacts of a specific type with training execution details.\n\nArgs:\n    artifact_type: Type of artifact (TRTLLM or RAW_WEIGHT) as query parameter\n    db: Database session\n    service: Model artifact service\n    \nReturns:\n    List of model artifacts of the specified type with training execution names",
+        "operationId": "get_model_artifacts_by_type_model_artifacts_by_type_get",
+        "parameters": [
+          {
+            "name": "artifact_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ArtifactType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelArtifactResponse"
+                  },
+                  "title": "Response Get Model Artifacts By Type Model Artifacts By Type Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Check",
+        "description": "Health check endpoint.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "root"
+        ],
+        "summary": "Root",
+        "description": "Root endpoint.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArtifactType": {
+        "type": "string",
+        "enum": [
+          "TRTLLM",
+          "RAW_WEIGHT"
+        ],
+        "title": "ArtifactType",
+        "description": "Enumeration of artifact types."
+      },
+      "DataSplitConfig": {
+        "properties": {
+          "train_ratio": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Train Ratio",
+            "description": "Training set ratio",
+            "default": 0.8
+          },
+          "test_ratio": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Test Ratio",
+            "description": "Test set ratio",
+            "default": 0.1
+          },
+          "val_ratio": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Val Ratio",
+            "description": "Validation set ratio",
+            "default": 0.1
+          },
+          "random_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Seed",
+            "description": "Random seed for reproducibility",
+            "default": 42
+          }
+        },
+        "type": "object",
+        "title": "DataSplitConfig",
+        "description": "Schema for train/test/val split configuration."
+      },
+      "FileTypeEnum": {
+        "type": "string",
+        "enum": [
+          "train",
+          "test",
+          "val",
+          "origin",
+          "processed"
+        ],
+        "title": "FileTypeEnum",
+        "description": "Data file type enumeration."
+      },
+      "GoogleAuthRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "GoogleAuthRequest",
+        "description": "Request body for Google OAuth."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ModelArtifactResponse": {
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "training_execution_id": {
+            "type": "string",
+            "title": "Training Execution Id"
+          },
+          "training_execution_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Execution Name"
+          },
+          "artifact_type": {
+            "type": "string",
+            "title": "Artifact Type"
+          },
+          "s3_path": {
+            "type": "string",
+            "title": "S3 Path"
+          },
+          "model_size_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Size Mb"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "training_execution_id",
+          "artifact_type",
+          "s3_path",
+          "created_at"
+        ],
+        "title": "ModelArtifactResponse",
+        "description": "Model artifact response with training execution details."
+      },
+      "PaginatedResponse_TrainingDataPreparationResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingDataPreparationResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of items for current page"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of items"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "description": "Current page number"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size",
+            "description": "Items per page"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages",
+            "description": "Total number of pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[TrainingDataPreparationResponse]"
+      },
+      "PaginatedResponse_TrainingExecutionResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingExecutionResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of items for current page"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of items"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "description": "Current page number"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size",
+            "description": "Items per page"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages",
+            "description": "Total number of pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[TrainingExecutionResponse]"
+      },
+      "PrepareRequest": {
+        "properties": {
+          "training_data_preparation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Data Preparation Id",
+            "description": "Data preparation ID to split"
+          },
+          "split_config": {
+            "$ref": "#/components/schemas/DataSplitConfig",
+            "description": "Split configuration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_data_preparation_id",
+          "split_config"
+        ],
+        "title": "PrepareRequest",
+        "description": "Schema for preparing data (train/test/val split)."
+      },
+      "PrepareResponse": {
+        "properties": {
+          "training_data_preparation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Data Preparation Id",
+            "description": "Training data preparation ID"
+          },
+          "train_file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Train File Id",
+            "description": "Training file ID"
+          },
+          "test_file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Test File Id",
+            "description": "Test file ID"
+          },
+          "val_file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Val File Id",
+            "description": "Validation file ID"
+          },
+          "train_s3_path": {
+            "type": "string",
+            "title": "Train S3 Path",
+            "description": "S3 path to training data"
+          },
+          "test_s3_path": {
+            "type": "string",
+            "title": "Test S3 Path",
+            "description": "S3 path to test data"
+          },
+          "val_s3_path": {
+            "type": "string",
+            "title": "Val S3 Path",
+            "description": "S3 path to validation data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_data_preparation_id",
+          "train_file_id",
+          "test_file_id",
+          "val_file_id",
+          "train_s3_path",
+          "test_s3_path",
+          "val_s3_path"
+        ],
+        "title": "PrepareResponse",
+        "description": "Schema for prepare response."
+      },
+      "PreprocessingMethod": {
+        "properties": {
+          "method_name": {
+            "type": "string",
+            "title": "Method Name",
+            "description": "Name of the preprocessing method"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters",
+            "description": "Method-specific parameters"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Order",
+            "description": "Execution order (0-indexed)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method_name",
+          "order"
+        ],
+        "title": "PreprocessingMethod",
+        "description": "Schema for a single preprocessing method."
+      },
+      "ProcessRequest": {
+        "properties": {
+          "training_data_preparation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Data Preparation Id",
+            "description": "Data preparation ID to process"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/PreprocessingMethod"
+            },
+            "type": "array",
+            "title": "Methods",
+            "description": "List of preprocessing methods in order"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_data_preparation_id",
+          "methods"
+        ],
+        "title": "ProcessRequest",
+        "description": "Schema for processing data with preprocessing methods."
+      },
+      "ProcessResponse": {
+        "properties": {
+          "training_data_preparation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Data Preparation Id",
+            "description": "Training data preparation ID"
+          },
+          "processed_s3_path": {
+            "type": "string",
+            "title": "Processed S3 Path",
+            "description": "S3 path to processed data"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Processing status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_data_preparation_id",
+          "processed_s3_path",
+          "status"
+        ],
+        "title": "ProcessResponse",
+        "description": "Schema for process response."
+      },
+      "RefreshTokenRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshTokenRequest",
+        "description": "Request body for token refresh."
+      },
+      "SaveFetchedDataRequest": {
+        "properties": {
+          "fetch_id": {
+            "type": "string",
+            "title": "Fetch Id",
+            "description": "Fetch ID from previous fetch operation"
+          },
+          "dataset_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Dataset Name",
+            "description": "Name for this data generation"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/SnowflakeFilters",
+            "description": "Original filters used for fetching"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fetch_id",
+          "dataset_name",
+          "filters"
+        ],
+        "title": "SaveFetchedDataRequest",
+        "description": "Schema for saving fetched data to S3."
+      },
+      "SaveFetchedDataResponse": {
+        "properties": {
+          "training_data_preparation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Data Preparation Id",
+            "description": "Created training data preparation ID"
+          },
+          "s3_root_path": {
+            "type": "string",
+            "title": "S3 Root Path",
+            "description": "Root S3 path where data is stored"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count",
+            "description": "Number of records saved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_data_preparation_id",
+          "s3_root_path",
+          "record_count"
+        ],
+        "title": "SaveFetchedDataResponse",
+        "description": "Schema for save fetched data response."
+      },
+      "SnowflakeFilters": {
+        "properties": {
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name",
+            "description": "Customer/client name"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id",
+            "description": "Tenant ID"
+          },
+          "date_range_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Range Start",
+            "description": "Start date for filtering"
+          },
+          "date_range_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Range End",
+            "description": "End date for filtering"
+          },
+          "languages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Languages",
+            "description": "List of language codes"
+          },
+          "asr_model_versions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asr Model Versions",
+            "description": "ASR model versions"
+          },
+          "workflow_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Ids",
+            "description": "Workflow IDs to filter"
+          },
+          "is_noisy": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Noisy",
+            "description": "Filter for noisy audio"
+          },
+          "overlapping_speech": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlapping Speech",
+            "description": "Filter for overlapping speech"
+          },
+          "is_not_relevant": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Not Relevant",
+            "description": "Filter for non-relevant data"
+          },
+          "is_voice_recording_na": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Voice Recording Na",
+            "description": "Filter for missing voice recordings"
+          },
+          "is_partial_audio": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Partial Audio",
+            "description": "Filter if the audio is partial"
+          },
+          "is_unclear_audio": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Unclear Audio",
+            "description": "Filter if the audio is not clear"
+          }
+        },
+        "type": "object",
+        "title": "SnowflakeFilters",
+        "description": "Schema for Snowflake query filters."
+      },
+      "StatusEnum": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "RUNNING",
+          "COMPLETED",
+          "FAILED",
+          "CANCELLED",
+          "CANCELLING"
+        ],
+        "title": "StatusEnum",
+        "description": "Training execution status enumeration."
+      },
+      "TRTLLMModel": {
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "training_execution_id": {
+            "type": "string",
+            "title": "Training Execution Id"
+          },
+          "s3_path": {
+            "type": "string",
+            "title": "S3 Path"
+          },
+          "model_size_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Size Mb"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "training_execution_id",
+          "s3_path",
+          "created_at"
+        ],
+        "title": "TRTLLMModel",
+        "description": "TRTLLM model artifact response."
+      },
+      "TenantMapping": {
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "cells": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "tenant_name"
+        ],
+        "title": "TenantMapping",
+        "description": "Tenant mapping response."
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "user"
+        ],
+        "title": "TokenResponse",
+        "description": "Response containing JWT tokens."
+      },
+      "TrainingAbort": {
+        "properties": {
+          "training_execution_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Execution Id",
+            "description": "Training execution ID to abort"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Reason for aborting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_execution_id"
+        ],
+        "title": "TrainingAbort",
+        "description": "Schema for aborting a training execution."
+      },
+      "TrainingConfiguration": {
+        "properties": {
+          "OutputPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outputpath"
+          },
+          "ExpName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expname"
+          },
+          "Language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "WandbLogging": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wandblogging"
+          },
+          "WandbProject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wandbproject"
+          },
+          "WandbEntity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wandbentity"
+          },
+          "WandbId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wandbid"
+          }
+        },
+        "type": "object",
+        "title": "TrainingConfiguration",
+        "description": "Training parameters that shouldn't be visible to users"
+      },
+      "TrainingDataFileResponse": {
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id",
+            "description": "File ID"
+          },
+          "file_type": {
+            "$ref": "#/components/schemas/FileTypeEnum",
+            "description": "File type"
+          },
+          "s3_path": {
+            "type": "string",
+            "title": "S3 Path",
+            "description": "S3 path to file"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name",
+            "description": "File name"
+          },
+          "record_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Count",
+            "description": "Number of records"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Creation timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id",
+          "file_type",
+          "s3_path",
+          "file_name",
+          "created_at"
+        ],
+        "title": "TrainingDataFileResponse",
+        "description": "Schema for training data file response."
+      },
+      "TrainingDataPreparationFilterRequest": {
+        "properties": {
+          "filters": {
+            "$ref": "#/components/schemas/SnowflakeFilters",
+            "description": "Snowflake query filters"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "description": "Maximum number of records to fetch",
+            "default": 1000
+          }
+        },
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "title": "TrainingDataPreparationFilterRequest",
+        "description": "Schema for manual data preparation from Snowflake."
+      },
+      "TrainingDataPreparationFilterResponse": {
+        "properties": {
+          "fetch_id": {
+            "type": "string",
+            "title": "Fetch Id",
+            "description": "Unique identifier for this fetch operation"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count",
+            "description": "Number of records fetched"
+          },
+          "preview": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Preview",
+            "description": "Preview of first few records"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "description": "Whether data is cached for later use",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "fetch_id",
+          "record_count",
+          "preview"
+        ],
+        "title": "TrainingDataPreparationFilterResponse",
+        "description": "Schema for training data preparation response."
+      },
+      "TrainingDataPreparationResponse": {
+        "properties": {
+          "training_data_preparation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Data Preparation Id",
+            "description": "Unique identifier"
+          },
+          "dataset_name": {
+            "type": "string",
+            "title": "Dataset Name",
+            "description": "Data generation name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name",
+            "description": "Customer name"
+          },
+          "s3_root_path": {
+            "type": "string",
+            "title": "S3 Root Path",
+            "description": "Root S3 path"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id",
+            "description": "Tenant ID"
+          },
+          "prefect_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefect Run Id",
+            "description": "Prefect flow run ID"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message",
+            "description": "Error message if preparation failed"
+          },
+          "date_range_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Range Start",
+            "description": "Start date filter"
+          },
+          "date_range_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Range End",
+            "description": "End date filter"
+          },
+          "languages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Languages",
+            "description": "Languages"
+          },
+          "asr_model_versions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asr Model Versions",
+            "description": "ASR model version"
+          },
+          "workflow_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Ids",
+            "description": "Workflow IDs"
+          },
+          "is_noisy": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Noisy",
+            "description": "Noisy audio filter"
+          },
+          "overlapping_speech": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlapping Speech",
+            "description": "Overlapping speech filter"
+          },
+          "is_not_relevant": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Not Relevant",
+            "description": "Not relevant filter"
+          },
+          "is_voice_recording_na": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Voice Recording Na",
+            "description": "Voice recording NA filter"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Creation timestamp"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingDataFileResponse"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "Associated files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_data_preparation_id",
+          "dataset_name",
+          "s3_root_path",
+          "created_at"
+        ],
+        "title": "TrainingDataPreparationResponse",
+        "description": "Schema for training data preparation response."
+      },
+      "TrainingExecutionCreate": {
+        "properties": {
+          "training_execution_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Training Execution Name",
+            "description": "Training execution name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name",
+            "description": "Client/customer name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description"
+          },
+          "hyperparameters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingHyperparameters"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Training hyperparameters"
+          },
+          "configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Our developer configuration, not configurable by user"
+          },
+          "prefect_parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefect Parameters",
+            "description": "Prefect flow parameters"
+          },
+          "training_data_preparation_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Training Data Preparation Ids",
+            "description": "list of training data preparation IDs to use"
+          }
+        },
+        "type": "object",
+        "required": [
+          "training_execution_name"
+        ],
+        "title": "TrainingExecutionCreate",
+        "description": "Schema for creating a new training execution."
+      },
+      "TrainingExecutionResponse": {
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Timestamp when record was created"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At",
+            "description": "Timestamp when record was last updated"
+          },
+          "training_execution_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Training Execution Name",
+            "description": "Training execution name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name",
+            "description": "Client/customer name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description"
+          },
+          "training_execution_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Training Execution Id",
+            "description": "Unique training execution identifier"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id",
+            "description": "User who created the training"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusEnum",
+            "description": "Current status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At",
+            "description": "Start timestamp"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At",
+            "description": "Completion timestamp"
+          },
+          "s3_model_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "S3 Model Path",
+            "description": "S3 path to trained model"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message",
+            "description": "Error message if training failed"
+          },
+          "prefect_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefect Run Id",
+            "description": "Prefect flow run ID"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id",
+            "description": "Tenant ID"
+          },
+          "hyperparameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hyperparameters",
+            "description": "Training hyperparameters"
+          },
+          "prefect_parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefect Parameters",
+            "description": "Prefect parameters"
+          },
+          "batch_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Size",
+            "description": "Batch size"
+          },
+          "learning_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learning Rate",
+            "description": "Learning rate"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By",
+            "description": "User who created this record"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By",
+            "description": "User who last updated this record"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_at",
+          "training_execution_name",
+          "training_execution_id",
+          "user_id",
+          "status"
+        ],
+        "title": "TrainingExecutionResponse",
+        "description": "Schema for training execution response."
+      },
+      "TrainingHyperparameters": {
+        "properties": {
+          "TrainDataPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traindatapath"
+          },
+          "ValidationDataPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validationdatapath"
+          },
+          "TestDataPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Testdatapath"
+          },
+          "GradientAccumulationSteps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gradientaccumulationsteps",
+            "default": 2
+          },
+          "MaxSteps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxsteps",
+            "default": 20000
+          },
+          "SaveSteps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savesteps",
+            "default": 1000
+          },
+          "EvalSteps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalsteps",
+            "default": 1000
+          },
+          "BatchSize": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batchsize",
+            "default": 8
+          },
+          "Lr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lr",
+            "default": 0.0001
+          },
+          "Optim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Optim",
+            "default": "adafactor"
+          },
+          "DebugMode": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debugmode",
+            "default": false
+          },
+          "DebugExamples": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debugexamples",
+            "default": 1000
+          },
+          "WhisperModelName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whispermodelname",
+            "default": "openai/whisper-large-v2"
+          },
+          "PartsToFreeze": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partstofreeze"
+          },
+          "KwsPromptProb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kwspromptprob",
+            "default": 0
+          },
+          "MaxTokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxtokens",
+            "default": 4
+          },
+          "MinKeywordLen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minkeywordlen",
+            "default": 3
+          },
+          "MaxPromptKeywords": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxpromptkeywords",
+            "default": 5
+          },
+          "NegKeywordProb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negkeywordprob",
+            "default": 0.1
+          },
+          "UseLora": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uselora",
+            "default": false
+          },
+          "LoraMergeAndUnload": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loramergeandunload",
+            "default": false
+          },
+          "SotProb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sotprob",
+            "default": 0
+          },
+          "MaxSotTokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxsottokens",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "title": "TrainingHyperparameters"
+      },
+      "UserResponse": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "User email address"
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Username",
+            "description": "Username"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id",
+            "description": "Unique user identifier"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Account creation timestamp"
+          },
+          "last_login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login",
+            "description": "Last login timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "username",
+          "user_id",
+          "created_at"
+        ],
+        "title": "UserResponse",
+        "description": "Schema for user response."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkflowInfo": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "workflow_name": {
+            "type": "string",
+            "title": "Workflow Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "workflow_name"
+        ],
+        "title": "WorkflowInfo",
+        "description": "Workflow information response."
+      }
+    }
+  }
+}

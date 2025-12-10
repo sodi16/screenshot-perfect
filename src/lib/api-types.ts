@@ -1,49 +1,66 @@
 // API types matching the swagger.json specification
 
 export type StatusEnum = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'CANCELLING';
-export type FileTypeEnum = 'train' | 'test' | 'validation';
+export type FileTypeEnum = 'train' | 'test' | 'val' | 'origin' | 'processed';
+export type ArtifactType = 'TRTLLM' | 'RAW_WEIGHT';
+
+export interface TenantMapping {
+  tenant_id: number;
+  tenant_name: string;
+  cells?: string | null;
+}
+
+export interface WorkflowInfo {
+  workflow_id: string;
+  workflow_name: string;
+}
+
+export interface TRTLLMModel {
+  artifact_id: string;
+  training_execution_id: string;
+  s3_path: string;
+  model_size_mb?: number | null;
+  created_at: string;
+}
 
 export interface SnowflakeFilters {
-  date_range_start?: string;
-  date_range_end?: string;
-  languages?: string[];
-  asr_model_version?: string;
-  workflow_ids?: string[];
+  customer_name?: string | null;
+  tenant_id?: number | null;
+  date_range_start?: string | null;
+  date_range_end?: string | null;
+  languages?: string[] | null;
+  asr_model_versions?: string[] | null;
+  workflow_ids?: string[] | null;
   is_noisy?: boolean | null;
   overlapping_speech?: boolean | null;
   is_not_relevant?: boolean | null;
   is_voice_recording_na?: boolean | null;
+  is_partial_audio?: boolean | null;
+  is_unclear_audio?: boolean | null;
 }
 
-export interface ManualFetchRequest {
+export interface TrainingDataPreparationFilterRequest {
   filters: SnowflakeFilters;
+  limit?: number | null;
 }
 
-export interface ManualFetchResponse {
+export interface TrainingDataPreparationFilterResponse {
   fetch_id: string;
-  preview: {
-    total_count: number;
-    sample_records: Record<string, unknown>[];
-  };
-  filters_applied: SnowflakeFilters;
+  record_count: number;
+  preview: Record<string, unknown>[];
+  cached?: boolean;
 }
 
 export interface SaveFetchedDataRequest {
   fetch_id: string;
-  generation_name: string;
-  customer_name?: string;
-  split_config?: {
-    train_ratio: number;
-    test_ratio: number;
-    val_ratio: number;
-  };
+  dataset_name: string;
+  filters: SnowflakeFilters;
 }
 
 export interface SaveFetchedDataResponse {
   training_data_preparation_id: string;
-  generation_name: string;
   s3_root_path: string;
-  files: TrainingDataFileResponse[];
+  record_count: number;
 }
 
 export interface TrainingDataFileResponse {
@@ -51,27 +68,31 @@ export interface TrainingDataFileResponse {
   file_type: FileTypeEnum;
   s3_path: string;
   file_name: string;
-  record_count?: number;
+  record_count?: number | null;
   created_at: string;
 }
 
 export interface TrainingDataPreparationResponse {
   training_data_preparation_id: string;
-  generation_name: string;
-  customer_name?: string;
+  dataset_name: string;
+  customer_name?: string | null;
   s3_root_path: string;
-  tenant_id?: number;
-  date_range_start?: string;
-  date_range_end?: string;
-  languages?: string[];
-  asr_model_version?: string;
-  workflow_ids?: string[];
+  tenant_id?: number | null;
+  prefect_run_id?: string | null;
+  error_message?: string | null;
+  date_range_start?: string | null;
+  date_range_end?: string | null;
+  languages?: string[] | null;
+  asr_model_versions?: string[] | null;
+  workflow_ids?: string[] | null;
   is_noisy?: boolean | null;
   overlapping_speech?: boolean | null;
   is_not_relevant?: boolean | null;
   is_voice_recording_na?: boolean | null;
+  is_partial_audio?: boolean | null;
+  is_unclear_audio?: boolean | null;
   created_at: string;
-  files: TrainingDataFileResponse[];
+  files?: TrainingDataFileResponse[];
 }
 
 export interface PaginatedResponse<T> {
@@ -79,37 +100,51 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   page_size: number;
-  pages: number;
+  total_pages: number;
 }
 
 export interface TrainingExecutionCreate {
   training_execution_name: string;
-  client_name?: string;
-  description?: string;
-  hyperparameters?: Record<string, unknown>;
-  prefect_parameters?: Record<string, unknown>;
-  batch_size?: number;
-  learning_rate?: number;
-  training_data_preparation_ids: string[];
+  customer_name?: string | null;
+  description?: string | null;
+  hyperparameters?: Record<string, unknown> | null;
+  configuration?: Record<string, unknown> | null;
+  prefect_parameters?: Record<string, unknown> | null;
+  training_data_preparation_ids?: string[];
+  base_model_artifact_id?: string | null;
 }
 
 export interface TrainingExecutionResponse {
   training_execution_id: string;
   training_execution_name: string;
-  client_name?: string;
-  description?: string;
+  customer_name?: string | null;
+  description?: string | null;
   user_id: string;
   status: StatusEnum;
-  started_at?: string;
-  completed_at?: string;
-  hyperparameters?: Record<string, unknown>;
-  prefect_parameters?: Record<string, unknown>;
-  s3_output_path?: string;
-  error_message?: string;
-  prefect_run_id?: string;
-  tenant_id?: number;
+  started_at?: string | null;
+  completed_at?: string | null;
+  hyperparameters?: Record<string, unknown> | null;
+  prefect_parameters?: Record<string, unknown> | null;
+  s3_model_path?: string | null;
+  error_message?: string | null;
+  prefect_run_id?: string | null;
+  tenant_id?: number | null;
+  batch_size?: number | null;
+  learning_rate?: number | null;
   created_at: string;
-  updated_at?: string;
+  updated_at?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+}
+
+export interface ModelArtifactResponse {
+  artifact_id: string;
+  training_execution_id: string;
+  training_execution_name?: string | null;
+  artifact_type: string;
+  s3_path: string;
+  model_size_mb?: number | null;
+  created_at: string;
 }
 
 export interface UserResponse {
@@ -124,4 +159,18 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
   user: UserResponse;
+}
+
+// Legacy types for backward compatibility
+export interface ManualFetchRequest {
+  filters: SnowflakeFilters;
+}
+
+export interface ManualFetchResponse {
+  fetch_id: string;
+  preview: {
+    total_count: number;
+    sample_records: Record<string, unknown>[];
+  };
+  filters_applied: SnowflakeFilters;
 }
