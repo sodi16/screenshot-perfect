@@ -1,15 +1,21 @@
 // API Service Layer - switches between dummy data and real API based on config
 import { APP_CONFIG } from './config';
-import { dataGenerations, trainingRuns, evaluations, modelArtifacts } from './mock-data';
+import { dataGenerations, trainingRuns, evaluations, modelArtifacts, tenantMappings, workflowsByTenant, trtllmModels, baseModelArtifacts } from './mock-data';
 import type {
-  ManualFetchRequest,
-  ManualFetchResponse,
+  TrainingDataPreparationFilterRequest,
+  TrainingDataPreparationFilterResponse,
   SaveFetchedDataRequest,
   SaveFetchedDataResponse,
   TrainingDataPreparationResponse,
   TrainingExecutionCreate,
   TrainingExecutionResponse,
   PaginatedResponse,
+  TenantMapping,
+  WorkflowInfo,
+  TRTLLMModel,
+  ModelArtifactResponse,
+  ArtifactType,
+  SnowflakeFilters,
 } from './api-types';
 import type { DataGeneration, TrainingRun, Evaluation, ModelArtifact } from './mock-data';
 
@@ -35,6 +41,42 @@ async function apiCall<T>(
   return response.json();
 }
 
+// ========== Tenant & Workflow APIs ==========
+
+export async function fetchTenantMappings(): Promise<TenantMapping[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(tenantMappings);
+  }
+  
+  return apiCall<TenantMapping[]>('/training_data/tenant_ids_mapping');
+}
+
+export async function fetchWorkflowsByTenant(tenantId: number): Promise<WorkflowInfo[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(workflowsByTenant[tenantId] || []);
+  }
+  
+  return apiCall<WorkflowInfo[]>(`/training_data/tenant/${tenantId}/workflow_ids`);
+}
+
+export async function fetchTrtllmModels(): Promise<TRTLLMModel[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(trtllmModels);
+  }
+  
+  return apiCall<TRTLLMModel[]>('/training_data/trtllm_models');
+}
+
+// ========== Model Artifacts by Type ==========
+
+export async function fetchModelArtifactsByType(artifactType: ArtifactType): Promise<ModelArtifactResponse[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve(baseModelArtifacts.filter(a => a.artifact_type === artifactType));
+  }
+  
+  return apiCall<ModelArtifactResponse[]>(`/model_artifacts/by-type?artifact_type=${artifactType}`);
+}
+
 // ========== Datasets (Training Data Preparation) ==========
 
 export async function fetchDatasets(): Promise<DataGeneration[]> {
@@ -43,10 +85,9 @@ export async function fetchDatasets(): Promise<DataGeneration[]> {
   }
   
   const response = await apiCall<PaginatedResponse<TrainingDataPreparationResponse>>(
-    '/training_data_preparation/'
+    '/training_data/'
   );
   
-  // Map API response to our DataGeneration type
   return response.items.map(mapApiDatasetToDataGeneration);
 }
 
@@ -56,26 +97,28 @@ export async function fetchDatasetById(id: string): Promise<DataGeneration | nul
   }
   
   const response = await apiCall<TrainingDataPreparationResponse>(
-    `/training_data_preparation/${id}`
+    `/training_data/${id}`
   );
   
   return mapApiDatasetToDataGeneration(response);
 }
 
-export async function createDatasetFetch(request: ManualFetchRequest): Promise<ManualFetchResponse> {
+export async function filterTrainingData(request: TrainingDataPreparationFilterRequest): Promise<TrainingDataPreparationFilterResponse> {
   if (APP_CONFIG.useDummyData) {
-    // Simulate a fetch response
+    // Simulate a filter response
     return Promise.resolve({
       fetch_id: `fetch_${Date.now()}`,
-      preview: {
-        total_count: Math.floor(Math.random() * 50000) + 10000,
-        sample_records: [],
-      },
-      filters_applied: request.filters,
+      record_count: Math.floor(Math.random() * 50000) + 10000,
+      preview: [
+        { id: '1', audio_path: 's3://...', transcript: 'Sample transcript 1' },
+        { id: '2', audio_path: 's3://...', transcript: 'Sample transcript 2' },
+        { id: '3', audio_path: 's3://...', transcript: 'Sample transcript 3' },
+      ],
+      cached: true,
     });
   }
   
-  return apiCall<ManualFetchResponse>('/training_data_preparation/manual/fetch', {
+  return apiCall<TrainingDataPreparationFilterResponse>('/training_data/filter', {
     method: 'POST',
     body: JSON.stringify(request),
   });
@@ -86,13 +129,12 @@ export async function saveDataset(request: SaveFetchedDataRequest): Promise<Save
     const newId = `data_gen_${Date.now()}`;
     return Promise.resolve({
       training_data_preparation_id: newId,
-      generation_name: request.generation_name,
-      s3_root_path: `s3://aiola-datasets/${request.customer_name || 'default'}/${newId}/`,
-      files: [],
+      s3_root_path: `s3://aiola-datasets/${request.dataset_name}/${newId}/`,
+      record_count: Math.floor(Math.random() * 50000) + 10000,
     });
   }
   
-  return apiCall<SaveFetchedDataResponse>('/training_data_preparation/manual/save_fetched_data', {
+  return apiCall<SaveFetchedDataResponse>('/training_data/save_fetched_data', {
     method: 'POST',
     body: JSON.stringify(request),
   });
@@ -103,7 +145,7 @@ export async function deleteDataset(id: string): Promise<void> {
     return Promise.resolve();
   }
   
-  await apiCall(`/training_data_preparation/${id}`, { method: 'DELETE' });
+  await apiCall(`/training_data/${id}`, { method: 'DELETE' });
 }
 
 // ========== Training Runs ==========
@@ -134,7 +176,7 @@ export async function createTrainingRun(request: TrainingExecutionCreate): Promi
     return Promise.resolve({
       training_execution_id: `train_${Date.now()}`,
       training_execution_name: request.training_execution_name,
-      client_name: request.client_name,
+      customer_name: request.customer_name,
       description: request.description,
       user_id: '1',
       status: 'PENDING',
@@ -187,7 +229,7 @@ function mapApiDatasetToDataGeneration(api: TrainingDataPreparationResponse): Da
   // Calculate record counts from files if available
   const trainFile = api.files?.find(f => f.file_type === 'train');
   const testFile = api.files?.find(f => f.file_type === 'test');
-  const valFile = api.files?.find(f => f.file_type === 'validation');
+  const valFile = api.files?.find(f => f.file_type === 'val');
   
   const trainRecords = trainFile?.record_count || 0;
   const testRecords = testFile?.record_count || 0;
@@ -195,7 +237,7 @@ function mapApiDatasetToDataGeneration(api: TrainingDataPreparationResponse): Da
   
   return {
     id: api.training_data_preparation_id,
-    name: api.generation_name,
+    name: api.dataset_name,
     client: api.customer_name || 'Unknown',
     dateRangeStart: api.date_range_start?.split('T')[0] || '',
     dateRangeEnd: api.date_range_end?.split('T')[0] || '',
@@ -207,12 +249,14 @@ function mapApiDatasetToDataGeneration(api: TrainingDataPreparationResponse): Da
     createdAt: api.created_at,
     filters: {
       languages: api.languages || [],
-      asrModelVersion: api.asr_model_version || '',
+      asrModelVersions: api.asr_model_versions || [],
       workflowIds: api.workflow_ids || null,
       isNoisy: api.is_noisy ?? null,
       overlappingSpeech: api.overlapping_speech ?? null,
       isNotRelevant: api.is_not_relevant ?? null,
       isVoiceRecordingNa: api.is_voice_recording_na ?? null,
+      isPartialAudio: api.is_partial_audio ?? null,
+      isUnclearAudio: api.is_unclear_audio ?? null,
     },
     trainS3Path: trainFile?.s3_path || '',
     testS3Path: testFile?.s3_path || '',
@@ -234,12 +278,12 @@ function mapApiTrainingToTrainingRun(api: TrainingExecutionResponse): TrainingRu
     id: api.training_execution_id,
     name: api.training_execution_name,
     status: statusMap[api.status] || 'queued',
-    client: api.client_name || 'Unknown',
+    client: api.customer_name || 'Unknown',
     userId: api.user_id,
     startedAt: api.started_at || api.created_at,
     completedAt: api.completed_at || null,
     dataGenerations: [],
-    s3Path: api.s3_output_path || '',
+    s3Path: api.s3_model_path || '',
     description: api.description || '',
     errorMessage: api.error_message || null,
     prefectRunId: api.prefect_run_id || null,
@@ -258,5 +302,22 @@ function mapApiTrainingToTrainingRun(api: TrainingExecutionResponse): TrainingRu
       },
       modelFormat: 'Triton',
     },
+  };
+}
+
+// Legacy function for backward compatibility
+export async function createDatasetFetch(request: { filters: SnowflakeFilters }): Promise<{
+  fetch_id: string;
+  preview: { total_count: number; sample_records: Record<string, unknown>[] };
+  filters_applied: SnowflakeFilters;
+}> {
+  const response = await filterTrainingData({ filters: request.filters });
+  return {
+    fetch_id: response.fetch_id,
+    preview: {
+      total_count: response.record_count,
+      sample_records: response.preview,
+    },
+    filters_applied: request.filters,
   };
 }

@@ -113,7 +113,7 @@ export function CreateTrainingForm() {
 
       await createTrainingRun({
         training_execution_name: formData.name,
-        client_name: formData.client,
+        customer_name: formData.client,
         description: formData.description,
         hyperparameters: allHyperparams,
         prefect_parameters: {
