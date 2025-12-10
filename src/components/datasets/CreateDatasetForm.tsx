@@ -61,13 +61,21 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
   const [workflowsLoading, setWorkflowsLoading] = useState(false);
   const [asrModelsLoading, setAsrModelsLoading] = useState(true);
 
+  // Available languages for the dropdown
+  const availableLanguages = ['en', 'es', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ko', 'ar', 'he', 'ru'];
+
   // Form state
   const [filters, setFilters] = useState<SnowflakeFilters>({
     tenant_id: null,
     date_range_start: undefined,
     date_range_end: undefined,
+    languages: [],
     asr_model_versions: [],
     workflow_ids: [],
+    is_noisy: null,
+    overlapping_speech: null,
+    is_not_relevant: null,
+    is_voice_recording_na: null,
     is_partial_audio: null,
     is_unclear_audio: null,
   });
@@ -150,6 +158,15 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
     }
   };
 
+  const toggleLanguage = (lang: string) => {
+    const current = filters.languages || [];
+    if (current.includes(lang)) {
+      setFilters(prev => ({ ...prev, languages: current.filter(l => l !== lang) }));
+    } else {
+      setFilters(prev => ({ ...prev, languages: [...current, lang] }));
+    }
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 1: 
@@ -225,8 +242,13 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
   const getAppliedFiltersCount = () => {
     let count = 0;
     if (dateRangeStart && dateRangeEnd) count++;
+    if (filters.languages && filters.languages.length > 0) count++;
     if (filters.workflow_ids && filters.workflow_ids.length > 0) count++;
     if (filters.asr_model_versions && filters.asr_model_versions.length > 0) count++;
+    if (filters.is_noisy !== null) count++;
+    if (filters.overlapping_speech !== null) count++;
+    if (filters.is_not_relevant !== null) count++;
+    if (filters.is_voice_recording_na !== null) count++;
     if (filters.is_partial_audio !== null) count++;
     if (filters.is_unclear_audio !== null) count++;
     return count;
@@ -366,6 +388,23 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
                 </div>
               </div>
 
+              {/* Languages */}
+              <div className="space-y-2">
+                <Label>Languages (Optional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableLanguages.map((lang) => (
+                    <Badge
+                      key={lang}
+                      variant={filters.languages?.includes(lang) ? 'default' : 'outline'}
+                      className="cursor-pointer uppercase"
+                      onClick={() => toggleLanguage(lang)}
+                    >
+                      {lang}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
               {/* Workflow IDs */}
               <div className="space-y-2">
                 <Label>Workflow IDs (Optional)</Label>
@@ -377,7 +416,7 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
                 ) : workflows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No workflows available for this customer</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                     {workflows.map((wf) => (
                       <div
                         key={wf.workflow_id}
@@ -404,7 +443,7 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
 
               {/* ASR Models */}
               <div className="space-y-2">
-                <Label>ASR Models (Optional)</Label>
+                <Label>ASR Model Versions (Optional)</Label>
                 {asrModelsLoading ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -427,51 +466,152 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
               </div>
 
               {/* Boolean Filters */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <Label>Is Partial Audio</Label>
-                    <p className="text-xs text-muted-foreground">Filter partial audio recordings</p>
+              <div className="space-y-2">
+                <Label>Audio Quality Filters (Optional)</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Is Noisy */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Noisy Audio</p>
+                      <p className="text-xs text-muted-foreground">Filter noisy recordings</p>
+                    </div>
+                    <Select 
+                      value={filters.is_noisy === null ? 'any' : filters.is_noisy ? 'true' : 'false'}
+                      onValueChange={(v) => setFilters(prev => ({ 
+                        ...prev, 
+                        is_noisy: v === 'any' ? null : v === 'true' 
+                      }))}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select 
-                    value={filters.is_partial_audio === null ? 'any' : filters.is_partial_audio ? 'true' : 'false'}
-                    onValueChange={(v) => setFilters(prev => ({ 
-                      ...prev, 
-                      is_partial_audio: v === 'any' ? null : v === 'true' 
-                    }))}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      <SelectItem value="true">Yes</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <Label>Is Unclear Audio</Label>
-                    <p className="text-xs text-muted-foreground">Filter unclear audio</p>
+                  {/* Overlapping Speech */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Overlapping Speech</p>
+                      <p className="text-xs text-muted-foreground">Filter overlapping audio</p>
+                    </div>
+                    <Select 
+                      value={filters.overlapping_speech === null ? 'any' : filters.overlapping_speech ? 'true' : 'false'}
+                      onValueChange={(v) => setFilters(prev => ({ 
+                        ...prev, 
+                        overlapping_speech: v === 'any' ? null : v === 'true' 
+                      }))}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select 
-                    value={filters.is_unclear_audio === null ? 'any' : filters.is_unclear_audio ? 'true' : 'false'}
-                    onValueChange={(v) => setFilters(prev => ({ 
-                      ...prev, 
-                      is_unclear_audio: v === 'any' ? null : v === 'true' 
-                    }))}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      <SelectItem value="true">Yes</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                  {/* Is Not Relevant */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Not Relevant</p>
+                      <p className="text-xs text-muted-foreground">Filter non-relevant data</p>
+                    </div>
+                    <Select 
+                      value={filters.is_not_relevant === null ? 'any' : filters.is_not_relevant ? 'true' : 'false'}
+                      onValueChange={(v) => setFilters(prev => ({ 
+                        ...prev, 
+                        is_not_relevant: v === 'any' ? null : v === 'true' 
+                      }))}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Is Voice Recording NA */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Missing Recording</p>
+                      <p className="text-xs text-muted-foreground">Voice recording N/A</p>
+                    </div>
+                    <Select 
+                      value={filters.is_voice_recording_na === null ? 'any' : filters.is_voice_recording_na ? 'true' : 'false'}
+                      onValueChange={(v) => setFilters(prev => ({ 
+                        ...prev, 
+                        is_voice_recording_na: v === 'any' ? null : v === 'true' 
+                      }))}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Is Partial Audio */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Partial Audio</p>
+                      <p className="text-xs text-muted-foreground">Filter partial recordings</p>
+                    </div>
+                    <Select 
+                      value={filters.is_partial_audio === null ? 'any' : filters.is_partial_audio ? 'true' : 'false'}
+                      onValueChange={(v) => setFilters(prev => ({ 
+                        ...prev, 
+                        is_partial_audio: v === 'any' ? null : v === 'true' 
+                      }))}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Is Unclear Audio */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Unclear Audio</p>
+                      <p className="text-xs text-muted-foreground">Filter unclear recordings</p>
+                    </div>
+                    <Select 
+                      value={filters.is_unclear_audio === null ? 'any' : filters.is_unclear_audio ? 'true' : 'false'}
+                      onValueChange={(v) => setFilters(prev => ({ 
+                        ...prev, 
+                        is_unclear_audio: v === 'any' ? null : v === 'true' 
+                      }))}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -501,6 +641,13 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
                     </div>
                   )}
                   
+                  {filters.languages && filters.languages.length > 0 && (
+                    <div className="flex justify-between p-2 bg-secondary/50 rounded">
+                      <span className="text-muted-foreground">Languages</span>
+                      <span className="uppercase">{filters.languages.join(', ')}</span>
+                    </div>
+                  )}
+                  
                   {filters.workflow_ids && filters.workflow_ids.length > 0 && (
                     <div className="flex justify-between p-2 bg-secondary/50 rounded col-span-2">
                       <span className="text-muted-foreground">Workflows</span>
@@ -512,6 +659,34 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
                     <div className="flex justify-between p-2 bg-secondary/50 rounded col-span-2">
                       <span className="text-muted-foreground">ASR Models</span>
                       <span>{filters.asr_model_versions.length} selected</span>
+                    </div>
+                  )}
+                  
+                  {filters.is_noisy !== null && (
+                    <div className="flex justify-between p-2 bg-secondary/50 rounded">
+                      <span className="text-muted-foreground">Noisy Audio</span>
+                      <span>{filters.is_noisy ? 'Yes' : 'No'}</span>
+                    </div>
+                  )}
+                  
+                  {filters.overlapping_speech !== null && (
+                    <div className="flex justify-between p-2 bg-secondary/50 rounded">
+                      <span className="text-muted-foreground">Overlapping Speech</span>
+                      <span>{filters.overlapping_speech ? 'Yes' : 'No'}</span>
+                    </div>
+                  )}
+                  
+                  {filters.is_not_relevant !== null && (
+                    <div className="flex justify-between p-2 bg-secondary/50 rounded">
+                      <span className="text-muted-foreground">Not Relevant</span>
+                      <span>{filters.is_not_relevant ? 'Yes' : 'No'}</span>
+                    </div>
+                  )}
+                  
+                  {filters.is_voice_recording_na !== null && (
+                    <div className="flex justify-between p-2 bg-secondary/50 rounded">
+                      <span className="text-muted-foreground">Missing Recording</span>
+                      <span>{filters.is_voice_recording_na ? 'Yes' : 'No'}</span>
                     </div>
                   )}
                   
