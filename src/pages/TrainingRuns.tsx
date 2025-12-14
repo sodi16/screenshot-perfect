@@ -64,8 +64,8 @@ function formatDate(dateString: string) {
 }
 
 interface TrainingFilters {
-  status: StatusEnum | '';
-  tenant_id: string;
+  status: StatusEnum | '' | 'all';
+  tenant_id: string | 'all';
   training_execution_name: string;
   prefect_run_id: string;
 }
@@ -98,8 +98,8 @@ export default function TrainingRuns() {
     };
     const runStatus = statusMapping[run.status] || run.status;
     
-    if (filters.status && runStatus !== filters.status) return false;
-    if (filters.tenant_id && run.tenantId !== filters.tenant_id) return false;
+    if (filters.status && filters.status !== 'all' && runStatus !== filters.status) return false;
+    if (filters.tenant_id && filters.tenant_id !== 'all' && run.tenantId !== filters.tenant_id) return false;
     if (filters.training_execution_name && 
         !run.name.toLowerCase().includes(filters.training_execution_name.toLowerCase())) return false;
     if (filters.prefect_run_id && run.prefectRunId !== filters.prefect_run_id) return false;
@@ -174,14 +174,14 @@ export default function TrainingRuns() {
             <div className="space-y-2">
               <Label>Status</Label>
               <Select 
-                value={filters.status} 
-                onValueChange={(v) => setFilters(prev => ({ ...prev, status: v as StatusEnum | '' }))}
+                value={filters.status || 'all'} 
+                onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === 'all' ? '' : v as StatusEnum | '' }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   {statusOptions.map(status => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
                   ))}
@@ -193,14 +193,14 @@ export default function TrainingRuns() {
             <div className="space-y-2">
               <Label>Tenant</Label>
               <Select 
-                value={filters.tenant_id} 
-                onValueChange={(v) => setFilters(prev => ({ ...prev, tenant_id: v }))}
+                value={filters.tenant_id || 'all'} 
+                onValueChange={(v) => setFilters(prev => ({ ...prev, tenant_id: v === 'all' ? '' : v }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All tenants" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All tenants</SelectItem>
+                  <SelectItem value="all">All tenants</SelectItem>
                   {tenantMappings.map(tenant => (
                     <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
                       {tenant.tenant_name}
