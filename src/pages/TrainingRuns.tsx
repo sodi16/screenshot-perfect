@@ -2,18 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Play, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  Search, 
   Plus,
   Eye,
-  RefreshCw,
-  BarChart3,
-  Trash2,
   Package,
-  AlertCircle,
-  Loader2
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,7 +67,7 @@ export default function TrainingRuns() {
   const [selectedRun, setSelectedRun] = useState<TrainingRun | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  
   
   const highlightedId = searchParams.get('id');
   
@@ -130,12 +122,6 @@ export default function TrainingRuns() {
       newParams.delete('id');
       setSearchParams(newParams);
     }
-  };
-
-  const handleSearch = () => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => setIsLoading(false), 500);
   };
 
   const handleClearFilters = () => {
@@ -231,15 +217,13 @@ export default function TrainingRuns() {
             </div>
           </div>
 
-          <div className="flex gap-2 mt-4">
-            <Button onClick={handleSearch} disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-              Search
-            </Button>
-            <Button variant="outline" onClick={handleClearFilters}>
-              Clear Filters
-            </Button>
-          </div>
+          {Object.values(filters).some(v => v) && (
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" onClick={handleClearFilters}>
+                Clear All Filters
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -251,7 +235,7 @@ export default function TrainingRuns() {
             <h3 className="text-lg font-medium mb-2">No training runs found</h3>
             <p className="text-muted-foreground mb-4">
               {Object.values(filters).some(v => v) 
-                ? 'Try adjusting your filters' 
+                ? 'No training runs found matching the selected filters' 
                 : 'Start a new training run to see it here'}
             </p>
             <Button onClick={() => setCreateModalOpen(true)}>
