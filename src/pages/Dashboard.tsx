@@ -46,7 +46,7 @@ const statsCards = [
     highlight: true,
   },
   {
-    title: 'Data Generations',
+    title: 'Data Generations todel',
     value: dataGenerations.length,
     icon: Database,
     change: '+1 this week',
