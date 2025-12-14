@@ -96,7 +96,7 @@ export interface TrainingRun {
   description: string;
   errorMessage: string | null;
   prefectRunId: string | null;
-  tenantId: number;
+  tenantId: string;
   parameters: {
     hyperparameters: {
       batchSize: number;
@@ -127,7 +127,7 @@ export const trainingRuns: TrainingRun[] = [
     description: 'Quarterly model update with improved accuracy',
     errorMessage: null,
     prefectRunId: 'prefect_abc123',
-    tenantId: 1,
+    tenantId: '1',
     parameters: {
       hyperparameters: { batchSize: 32, learningRate: 0.001, epochs: 50, optimizer: 'Adam' },
       prefectParams: { gpuType: 'V100', instanceType: 'p3.2xlarge', memory: '16GB' },
@@ -147,7 +147,7 @@ export const trainingRuns: TrainingRun[] = [
     description: 'Training on multiple languages',
     errorMessage: null,
     prefectRunId: 'prefect_def456',
-    tenantId: 2,
+    tenantId: '2',
     parameters: {
       hyperparameters: { batchSize: 64, learningRate: 0.0005, epochs: 100, optimizer: 'AdamW' },
       prefectParams: { gpuType: 'A100', instanceType: 'p4d.24xlarge', memory: '32GB' },
@@ -167,7 +167,7 @@ export const trainingRuns: TrainingRun[] = [
     description: 'Testing new preprocessing pipeline',
     errorMessage: 'CUDA out of memory. Tried to allocate 2.00 GiB. GPU memory usage: 14.5 GiB / 16.0 GiB',
     prefectRunId: 'prefect_ghi789',
-    tenantId: 1,
+    tenantId: '1',
     parameters: {
       hyperparameters: { batchSize: 16, learningRate: 0.01, epochs: 10, optimizer: 'SGD' },
       prefectParams: { gpuType: 'T4', instanceType: 'g4dn.xlarge', memory: '8GB' },
@@ -187,7 +187,7 @@ export const trainingRuns: TrainingRun[] = [
     description: 'New client onboarding model',
     errorMessage: null,
     prefectRunId: null,
-    tenantId: 3,
+    tenantId: '3',
     parameters: {
       hyperparameters: { batchSize: 32, learningRate: 0.001, epochs: 75, optimizer: 'Adam' },
       prefectParams: { gpuType: 'V100', instanceType: 'p3.2xlarge', memory: '16GB' },

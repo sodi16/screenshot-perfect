@@ -44,27 +44,31 @@ async function apiCall<T>(
 // ========== Tenant & Workflow APIs ==========
 
 export async function fetchTenantMappings(): Promise<TenantMapping[]> {
-  if (APP_CONFIG.useDummyData) {
-    return Promise.resolve(tenantMappings);
-  }
+  // if (APP_CONFIG.useDummyData) {
+  //   return Promise.resolve(tenantMappings);
+  // }
   
   return apiCall<TenantMapping[]>('/training_data/tenant_ids_mapping');
 }
 
-export async function fetchWorkflowsByTenant(tenantId: number): Promise<WorkflowInfo[]> {
+export async function fetchWorkflowsByTenant(tenantId: string): Promise<WorkflowInfo[]> {
   if (APP_CONFIG.useDummyData) {
     return Promise.resolve(workflowsByTenant[tenantId] || []);
   }
   
-  return apiCall<WorkflowInfo[]>(`/training_data/tenant/${tenantId}/workflow_ids`);
+  return apiCall<WorkflowInfo[]>(`/training/tenant/${tenantId}/workflow_ids`);
 }
 
 export async function fetchTrtllmModels(): Promise<TRTLLMModel[]> {
-  if (APP_CONFIG.useDummyData) {
-    return Promise.resolve(trtllmModels);
-  }
+  // if (APP_CONFIG.useDummyData) {
+  //   return Promise.resolve(trtllmModels);
+  // }
   
   return apiCall<TRTLLMModel[]>('/training_data/trtllm_models');
+}
+
+export async function fetchTenantTrtllmModels(tenantId: string): Promise<TRTLLMModel[]> {
+  return apiCall<TRTLLMModel[]>(`/training/tenant/${tenantId}/trtllm_models`);
 }
 
 // ========== Model Artifacts by Type ==========
@@ -287,7 +291,7 @@ function mapApiTrainingToTrainingRun(api: TrainingExecutionResponse): TrainingRu
     description: api.description || '',
     errorMessage: api.error_message || null,
     prefectRunId: api.prefect_run_id || null,
-    tenantId: api.tenant_id || 0,
+    tenantId: api.tenant_id || '',
     parameters: {
       hyperparameters: (api.hyperparameters as TrainingRun['parameters']['hyperparameters']) || {
         batchSize: 32,

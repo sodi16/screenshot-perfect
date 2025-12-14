@@ -5,9 +5,10 @@ export type FileTypeEnum = 'train' | 'test' | 'val' | 'origin' | 'processed';
 export type ArtifactType = 'TRTLLM' | 'RAW_WEIGHT';
 
 export interface TenantMapping {
-  tenant_id: number;
+  tenant_id: string;
   tenant_name: string;
-  cells?: string | null;
+  cells?: object | null;
+  region?: string | null;
 }
 
 export interface WorkflowInfo {
@@ -21,11 +22,13 @@ export interface TRTLLMModel {
   s3_path: string;
   model_size_mb?: number | null;
   created_at: string;
+  tenant_id?: string | null;
+  description?: string | null;
 }
 
 export interface SnowflakeFilters {
   customer_name?: string | null;
-  tenant_id?: number | null;
+  tenant_id?: string | null;
   date_range_start?: string | null;
   date_range_end?: string | null;
   languages?: string[] | null;
@@ -77,7 +80,7 @@ export interface TrainingDataPreparationResponse {
   dataset_name: string;
   customer_name?: string | null;
   s3_root_path: string;
-  tenant_id?: number | null;
+  tenant_id?: string | null;
   prefect_run_id?: string | null;
   error_message?: string | null;
   date_range_start?: string | null;
@@ -128,7 +131,7 @@ export interface TrainingExecutionResponse {
   s3_model_path?: string | null;
   error_message?: string | null;
   prefect_run_id?: string | null;
-  tenant_id?: number | null;
+  tenant_id?: string | null;
   batch_size?: number | null;
   learning_rate?: number | null;
   created_at: string;

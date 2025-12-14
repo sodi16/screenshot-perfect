@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { 
   fetchTenantMappings, 
   fetchWorkflowsByTenant, 
-  fetchTrtllmModels,
+  fetchTenantTrtllmModels,
   filterTrainingData, 
   saveDataset 
 } from '@/lib/api-service';
@@ -52,7 +52,7 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
 
   // Step 1: Customer selection
   const [tenants, setTenants] = useState<TenantMapping[]>([]);
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [tenantsLoading, setTenantsLoading] = useState(true);
 
   // Step 2: Filters data
@@ -88,6 +88,8 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
 
   // Load tenants on mount
   useEffect(() => {
+    console.log('selectedTenantId in Load tenants on mount', selectedTenantId);
+
     const loadTenants = async () => {
       try {
         const data = await fetchTenantMappings();
@@ -101,23 +103,29 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
     loadTenants();
   }, []);
 
-  // Load ASR models on mount (independent of tenant)
+  // Load ASR models when tenant is selected
   useEffect(() => {
-    const loadAsrModels = async () => {
-      try {
-        const data = await fetchTrtllmModels();
-        setAsrModels(data);
-      } catch (error) {
-        toast.error('Failed to load ASR models');
-      } finally {
-        setAsrModelsLoading(false);
-      }
-    };
-    loadAsrModels();
-  }, []);
+    console.log('selectedTenantId in Load ASR', selectedTenantId);
+
+    if (selectedTenantId) {
+      const loadAsrModels = async () => {
+        setAsrModelsLoading(true);
+        try {
+          const data = await fetchTenantTrtllmModels(selectedTenantId);
+          setAsrModels(data);
+        } catch (error) {
+          toast.error('Failed to load ASR models');
+        } finally {
+          setAsrModelsLoading(false);
+        }
+      };
+      loadAsrModels();
+    }
+  }, [selectedTenantId]);
 
   // Load workflows when tenant is selected
   useEffect(() => {
+    console.log('selectedTenantId in Load workflows', selectedTenantId);
     if (selectedTenantId) {
       const loadWorkflows = async () => {
         setWorkflowsLoading(true);
@@ -135,9 +143,10 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
   }, [selectedTenantId]);
 
   const handleTenantSelect = (tenantId: string) => {
-    const id = parseInt(tenantId);
-    setSelectedTenantId(id);
-    setFilters(prev => ({ ...prev, tenant_id: id, workflow_ids: [] }));
+    console.log('selectedTenantId in handleTenantSelect', tenantId);
+    setSelectedTenantId(tenantId);
+    setFilters(prev => ({ ...prev, tenant_id: tenantId, workflow_ids: [] }));
+    setWorkflows([]); // Clear workflows when changing tenant
   };
 
   const toggleWorkflowId = (workflowId: string) => {
@@ -170,7 +179,7 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
   const canProceed = () => {
     switch (currentStep) {
       case 1: 
-        return selectedTenantId !== null;
+        return selectedTenantId !== null && selectedTenantId !== '';
       case 2: 
         return true; // All filters are optional
       case 3: 
@@ -312,16 +321,25 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
                 <div className="space-y-2">
                   <Label>Select Customer *</Label>
                   <Select 
-                    value={selectedTenantId?.toString() || ''} 
+                    value={selectedTenantId || undefined} 
                     onValueChange={handleTenantSelect}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a customer..." />
+                      <SelectValue placeholder="Choose a customer...">
+                        {selectedTenantId && (
+                          <>
+                            {tenants.find(t => t.tenant_id === selectedTenantId)?.tenant_name}
+                            {tenants.find(t => t.tenant_id === selectedTenantId)?.region && 
+                              ` (${tenants.find(t => t.tenant_id === selectedTenantId)?.region})`
+                            }
+                          </>
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {tenants.map((tenant) => (
-                        <SelectItem key={tenant.tenant_id} value={tenant.tenant_id.toString()}>
-                          {tenant.tenant_name} {tenant.cells && `(${tenant.cells})`}
+                        <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
+                          {tenant.tenant_name} {tenant.region && `(${tenant.region})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -457,8 +475,9 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
                         variant={filters.asr_model_versions?.includes(model.artifact_id) ? 'default' : 'outline'}
                         className="cursor-pointer"
                         onClick={() => toggleAsrModel(model.artifact_id)}
+                        title={model.s3_path} // Show S3 path on hover
                       >
-                        {model.s3_path.split('/').pop() || model.artifact_id}
+                        {model.description || model.s3_path.split('/').pop() || model.artifact_id}
                       </Badge>
                     ))}
                   </div>
