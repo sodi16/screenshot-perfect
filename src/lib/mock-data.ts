@@ -7,27 +7,27 @@ export const users = [
 
 // ========== Tenant Mappings ==========
 export const tenantMappings: TenantMapping[] = [
-  { tenant_id: 1, tenant_name: 'Customer A', cells: 'US-EAST' },
-  { tenant_id: 2, tenant_name: 'Customer B', cells: 'EU-WEST' },
-  { tenant_id: 3, tenant_name: 'Customer C', cells: 'US-WEST' },
-  { tenant_id: 4, tenant_name: 'Customer D', cells: 'APAC' },
+  { tenant_id: 'tenant_001', tenant_name: 'Customer A', cells: { region: 'US-EAST' } },
+  { tenant_id: 'tenant_002', tenant_name: 'Customer B', cells: { region: 'EU-WEST' } },
+  { tenant_id: 'tenant_003', tenant_name: 'Customer C', cells: { region: 'US-WEST' } },
+  { tenant_id: 'tenant_004', tenant_name: 'Customer D', cells: { region: 'APAC' } },
 ];
 
 // ========== Workflows by Tenant ==========
-export const workflowsByTenant: Record<number, WorkflowInfo[]> = {
-  1: [
+export const workflowsByTenant: Record<string, WorkflowInfo[]> = {
+  'tenant_001': [
     { workflow_id: 'wf_12345', workflow_name: 'Main Production Workflow' },
     { workflow_id: 'wf_12346', workflow_name: 'Voice Recording Pipeline' },
     { workflow_id: 'wf_12347', workflow_name: 'QA Testing Workflow' },
   ],
-  2: [
+  'tenant_002': [
     { workflow_id: 'wf_22345', workflow_name: 'Multilingual Processing' },
     { workflow_id: 'wf_22346', workflow_name: 'European Transcription' },
   ],
-  3: [
+  'tenant_003': [
     { workflow_id: 'wf_32345', workflow_name: 'Customer Service Recording' },
   ],
-  4: [
+  'tenant_004': [
     { workflow_id: 'wf_42345', workflow_name: 'APAC Voice Pipeline' },
     { workflow_id: 'wf_42346', workflow_name: 'Japanese Transcription' },
     { workflow_id: 'wf_42347', workflow_name: 'Korean ASR Pipeline' },

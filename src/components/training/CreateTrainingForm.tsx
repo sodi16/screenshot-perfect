@@ -45,7 +45,11 @@ const steps = [
   { id: 5, title: 'Review & Submit' },
 ];
 
-export function CreateTrainingForm() {
+interface CreateTrainingFormProps {
+  onSuccess?: () => void;
+}
+
+export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -127,7 +131,8 @@ export function CreateTrainingForm() {
       });
       
       toast.success('Training run created successfully!');
-      navigate('/training-runs?tab=active');
+      onSuccess?.();
+      navigate('/training-runs');
     } catch (error) {
       toast.error('Failed to create training run');
     } finally {
