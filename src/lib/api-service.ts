@@ -154,13 +154,19 @@ export async function deleteDataset(id: string): Promise<void> {
 
 // ========== Training Runs ==========
 
-export async function fetchTrainingRuns(): Promise<TrainingRun[]> {
+export async function fetchTrainingRuns(createdAtDays: number = 30): Promise<TrainingRun[]> {
   if (APP_CONFIG.useDummyData) {
-    return Promise.resolve(trainingRuns);
+    // Filter mock data by created_at days
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - createdAtDays);
+    
+    return Promise.resolve(
+      trainingRuns.filter(run => new Date(run.startedAt) >= cutoffDate)
+    );
   }
   
   const response = await apiCall<PaginatedResponse<TrainingExecutionResponse>>(
-    '/training/'
+    `/training/?created_at=${createdAtDays}`
   );
   
   return response.items.map(mapApiTrainingToTrainingRun);
