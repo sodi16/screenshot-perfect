@@ -205,11 +205,11 @@ export async function fetchTrainingRuns(filters: TrainingRunsFilterParams = {}):
   if (filters.prefect_run_id) params.append('prefect_run_id', filters.prefect_run_id);
   
   const queryString = params.toString();
-  const response = await apiCall<PaginatedResponse<TrainingExecutionResponse>>(
+  const response = await apiCall<TrainingExecutionResponse[]>(
     `/training/${queryString ? `?${queryString}` : ''}`
   );
   
-  return response.items.map(mapApiTrainingToTrainingRun);
+  return response.map(mapApiTrainingToTrainingRun);
 }
 
 export async function fetchTrainingRunById(id: string): Promise<TrainingRun | null> {
