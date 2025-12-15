@@ -96,7 +96,7 @@ export default function TrainingRuns() {
   
   // Date range - default to last 2 weeks
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: subDays(new Date(), 14),
+    from: subDays(new Date(), 30),
     to: new Date(),
   });
   
@@ -131,7 +131,7 @@ export default function TrainingRuns() {
         
         // Fetch training runs with default 2-week filter
         const params: TrainingRunsFilterParams = {
-          start_date: format(subDays(new Date(), 14), 'yyyy-MM-dd'),
+          start_date: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
           end_date: format(new Date(), 'yyyy-MM-dd'),
         };
         
@@ -217,7 +217,7 @@ export default function TrainingRuns() {
       prefect_run_id: '',
     });
     setDateRange({
-      from: subDays(new Date(), 14),
+      from: subDays(new Date(), 30),
       to: new Date(),
     });
   };
