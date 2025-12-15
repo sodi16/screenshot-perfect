@@ -43,7 +43,6 @@ function getStatusBadge(status: string) {
     queued: 'queued',
     PENDING: 'queued',
     CANCELLED: 'failed',
-    CANCELLING: 'running',
   };
   return variants[status] || 'secondary';
 }
@@ -87,9 +86,12 @@ export default function TrainingRuns() {
 
   // Fetch training runs on mount and when createdAtFilter changes
   useEffect(() => {
+    console.log('tododododod');
+
     const loadTrainingRuns = async () => {
       setIsLoading(true);
       try {
+        console.log('createdAtFilter in useEffect', createdAtFilter);
         const data = await fetchTrainingRuns(parseInt(createdAtFilter));
         setTrainingRunsData(data);
       } catch (error) {

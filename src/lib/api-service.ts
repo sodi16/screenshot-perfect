@@ -155,15 +155,15 @@ export async function deleteDataset(id: string): Promise<void> {
 // ========== Training Runs ==========
 
 export async function fetchTrainingRuns(createdAtDays: number = 30): Promise<TrainingRun[]> {
-  if (APP_CONFIG.useDummyData) {
-    // Filter mock data by created_at days
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - createdAtDays);
+  // if (APP_CONFIG.useDummyData) {
+  //   // Filter mock data by created_at days
+  //   const cutoffDate = new Date();
+  //   cutoffDate.setDate(cutoffDate.getDate() - createdAtDays);
     
-    return Promise.resolve(
-      trainingRuns.filter(run => new Date(run.startedAt) >= cutoffDate)
-    );
-  }
+  //   return Promise.resolve(
+  //     trainingRuns.filter(run => new Date(run.startedAt) >= cutoffDate)
+  //   );
+  // }
   
   const response = await apiCall<PaginatedResponse<TrainingExecutionResponse>>(
     `/training/?created_at=${createdAtDays}`
