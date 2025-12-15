@@ -157,6 +157,21 @@ export interface UserResponse {
   picture_url?: string;
 }
 
+export interface AuthUser {
+  user_id: string;
+  email: string;
+}
+
+export interface TrainingRunsFilterParams {
+  start_date?: string;
+  end_date?: string;
+  created_by?: string[];
+  tenant_id?: string[];
+  status?: StatusEnum;
+  training_execution_name?: string;
+  prefect_run_id?: string;
+}
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;
