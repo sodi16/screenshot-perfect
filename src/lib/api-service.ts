@@ -16,6 +16,8 @@ import type {
   ModelArtifactResponse,
   ArtifactType,
   SnowflakeFilters,
+  AuthUser,
+  TrainingRunsFilterParams,
 } from './api-types';
 import type { DataGeneration, TrainingRun, Evaluation, ModelArtifact } from './mock-data';
 
@@ -152,21 +154,59 @@ export async function deleteDataset(id: string): Promise<void> {
   await apiCall(`/training_data/${id}`, { method: 'DELETE' });
 }
 
+// ========== Auth Users ==========
+
+export async function fetchAuthUsers(): Promise<AuthUser[]> {
+  if (APP_CONFIG.useDummyData) {
+    return Promise.resolve([
+      { user_id: '1', email: 'john.doe@aiola.com' },
+      { user_id: '2', email: 'jane.smith@aiola.com' },
+      { user_id: '3', email: 'bob.wilson@aiola.com' },
+    ]);
+  }
+  
+  return apiCall<AuthUser[]>('/auth/users');
+}
+
 // ========== Training Runs ==========
 
-export async function fetchTrainingRuns(createdAtDays: number = 30): Promise<TrainingRun[]> {
-  // if (APP_CONFIG.useDummyData) {
-  //   // Filter mock data by created_at days
-  //   const cutoffDate = new Date();
-  //   cutoffDate.setDate(cutoffDate.getDate() - createdAtDays);
+export async function fetchTrainingRuns(filters: TrainingRunsFilterParams = {}): Promise<TrainingRun[]> {
+  if (APP_CONFIG.useDummyData) {
+    // Filter mock data
+    let filteredRuns = [...trainingRuns];
     
-  //   return Promise.resolve(
-  //     trainingRuns.filter(run => new Date(run.startedAt) >= cutoffDate)
-  //   );
-  // }
+    if (filters.start_date) {
+      const startDate = new Date(filters.start_date);
+      filteredRuns = filteredRuns.filter(run => new Date(run.startedAt) >= startDate);
+    }
+    
+    if (filters.end_date) {
+      const endDate = new Date(filters.end_date);
+      endDate.setHours(23, 59, 59, 999);
+      filteredRuns = filteredRuns.filter(run => new Date(run.startedAt) <= endDate);
+    }
+    
+    return Promise.resolve(filteredRuns);
+  }
   
+  // Build query params
+  const params = new URLSearchParams();
+  
+  if (filters.start_date) params.append('start_date', filters.start_date);
+  if (filters.end_date) params.append('end_date', filters.end_date);
+  if (filters.created_by?.length) {
+    filters.created_by.forEach(id => params.append('created_by', id));
+  }
+  if (filters.tenant_id?.length) {
+    filters.tenant_id.forEach(id => params.append('tenant_id', id));
+  }
+  if (filters.status) params.append('status', filters.status);
+  if (filters.training_execution_name) params.append('training_execution_name', filters.training_execution_name);
+  if (filters.prefect_run_id) params.append('prefect_run_id', filters.prefect_run_id);
+  
+  const queryString = params.toString();
   const response = await apiCall<PaginatedResponse<TrainingExecutionResponse>>(
-    `/training/?created_at=${createdAtDays}`
+    `/training/${queryString ? `?${queryString}` : ''}`
   );
   
   return response.items.map(mapApiTrainingToTrainingRun);

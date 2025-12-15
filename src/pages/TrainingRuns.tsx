@@ -1,18 +1,28 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { format, subDays } from 'date-fns';
 import { 
   Play, 
   Plus,
   Eye,
   Package,
   AlertCircle,
-  Loader2
+  Loader2,
+  CalendarIcon,
+  Search,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -26,11 +36,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { users, modelArtifacts, TrainingRun, tenantMappings } from '@/lib/mock-data';
-import { fetchTrainingRuns } from '@/lib/api-service';
+import { Checkbox } from '@/components/ui/checkbox';
+import { users, modelArtifacts, TrainingRun } from '@/lib/mock-data';
+import { fetchTrainingRuns, fetchAuthUsers, fetchTenantMappings } from '@/lib/api-service';
 import { CreateTrainingForm } from '@/components/training/CreateTrainingForm';
 import { TrainingDetailsModal } from '@/components/training/TrainingDetailsModal';
-import type { StatusEnum } from '@/lib/api-types';
+import type { StatusEnum, TenantMapping, AuthUser, TrainingRunsFilterParams } from '@/lib/api-types';
+import { cn } from '@/lib/utils';
 
 function getStatusBadge(status: string) {
   const variants: Record<string, 'success' | 'failed' | 'running' | 'queued'> = {
@@ -56,14 +68,18 @@ function formatDate(dateString: string) {
   });
 }
 
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
 interface TrainingFilters {
-  status: StatusEnum | '' | 'all';
-  tenant_id: string | 'all';
+  status: StatusEnum | '';
+  tenant_ids: string[];
+  created_by_ids: string[];
   training_execution_name: string;
   prefect_run_id: string;
 }
-
-type CreatedAtFilter = '30' | '60';
 
 export default function TrainingRuns() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,74 +88,64 @@ export default function TrainingRuns() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [trainingRunsData, setTrainingRunsData] = useState<TrainingRun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [createdAtFilter, setCreatedAtFilter] = useState<CreatedAtFilter>('30');
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Reference data
+  const [tenants, setTenants] = useState<TenantMapping[]>([]);
+  const [authUsers, setAuthUsers] = useState<AuthUser[]>([]);
+  
+  // Date range - default to last 2 weeks
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: subDays(new Date(), 14),
+    to: new Date(),
+  });
   
   const highlightedId = searchParams.get('id');
   
   // Filters state
   const [filters, setFilters] = useState<TrainingFilters>({
     status: '',
-    tenant_id: '',
+    tenant_ids: [],
+    created_by_ids: [],
     training_execution_name: '',
     prefect_run_id: '',
   });
 
-  // Fetch training runs on mount and when createdAtFilter changes
-  useEffect(() => {
-    console.log('tododododod');
+  // Multi-select dropdown states
+  const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
+  const [createdByDropdownOpen, setCreatedByDropdownOpen] = useState(false);
 
-    const loadTrainingRuns = async () => {
+  // Load reference data and initial training runs on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        console.log('createdAtFilter in useEffect', createdAtFilter);
-        const data = await fetchTrainingRuns(parseInt(createdAtFilter));
-        setTrainingRunsData(data);
+        // Fetch reference data in parallel
+        const [tenantsData, usersData] = await Promise.all([
+          fetchTenantMappings(),
+          fetchAuthUsers(),
+        ]);
+        
+        setTenants(tenantsData);
+        setAuthUsers(usersData);
+        
+        // Fetch training runs with default 2-week filter
+        const params: TrainingRunsFilterParams = {
+          start_date: format(subDays(new Date(), 14), 'yyyy-MM-dd'),
+          end_date: format(new Date(), 'yyyy-MM-dd'),
+        };
+        
+        const runs = await fetchTrainingRuns(params);
+        setTrainingRunsData(runs);
       } catch (error) {
-        console.error('Failed to fetch training runs:', error);
+        console.error('Failed to fetch initial data:', error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadTrainingRuns();
-  }, [createdAtFilter]);
-
-  // Extract unique tenants from loaded data for dropdown
-  const availableTenants = useMemo(() => {
-    const uniqueTenants = new Map<string, string>();
-    trainingRunsData.forEach(run => {
-      if (run.tenantId) {
-        const tenantMapping = tenantMappings.find(t => t.tenant_id === run.tenantId);
-        uniqueTenants.set(run.tenantId, tenantMapping?.tenant_name || run.tenantId);
-      }
-    });
-    return Array.from(uniqueTenants.entries()).map(([id, name]) => ({
-      tenant_id: id,
-      customer_name: name,
-    }));
-  }, [trainingRunsData]);
-
-  // Filter training runs based on current filters (frontend filtering)
-  const filteredRuns = useMemo(() => {
-    return trainingRunsData.filter(run => {
-      // Map local status to filter status
-      const statusMapping: Record<string, StatusEnum> = {
-        'running': 'RUNNING',
-        'success': 'COMPLETED',
-        'failed': 'FAILED',
-        'queued': 'PENDING',
-      };
-      const runStatus = statusMapping[run.status] || run.status;
-      
-      if (filters.status && filters.status !== 'all' && runStatus !== filters.status) return false;
-      if (filters.tenant_id && filters.tenant_id !== 'all' && run.tenantId !== filters.tenant_id) return false;
-      if (filters.training_execution_name && 
-          !run.name.toLowerCase().includes(filters.training_execution_name.toLowerCase())) return false;
-      if (filters.prefect_run_id && run.prefectRunId !== filters.prefect_run_id) return false;
-      
-      return true;
-    }).sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
-  }, [trainingRunsData, filters]);
+    loadInitialData();
+  }, []);
 
   // Open modal if id is in URL
   useEffect(() => {
@@ -151,6 +157,42 @@ export default function TrainingRuns() {
       }
     }
   }, [highlightedId, trainingRunsData]);
+
+  const handleSearch = async () => {
+    setIsSearching(true);
+    try {
+      const params: TrainingRunsFilterParams = {};
+      
+      if (dateRange.from) {
+        params.start_date = format(dateRange.from, 'yyyy-MM-dd');
+      }
+      if (dateRange.to) {
+        params.end_date = format(dateRange.to, 'yyyy-MM-dd');
+      }
+      if (filters.created_by_ids.length > 0) {
+        params.created_by = filters.created_by_ids;
+      }
+      if (filters.tenant_ids.length > 0) {
+        params.tenant_id = filters.tenant_ids;
+      }
+      if (filters.status) {
+        params.status = filters.status;
+      }
+      if (filters.training_execution_name.trim()) {
+        params.training_execution_name = filters.training_execution_name.trim();
+      }
+      if (filters.prefect_run_id.trim()) {
+        params.prefect_run_id = filters.prefect_run_id.trim();
+      }
+      
+      const runs = await fetchTrainingRuns(params);
+      setTrainingRunsData(runs);
+    } catch (error) {
+      console.error('Failed to search training runs:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleOpenDetails = (run: TrainingRun) => {
     setSelectedRun(run);
@@ -169,15 +211,43 @@ export default function TrainingRuns() {
   const handleClearFilters = () => {
     setFilters({
       status: '',
-      tenant_id: '',
+      tenant_ids: [],
+      created_by_ids: [],
       training_execution_name: '',
       prefect_run_id: '',
     });
+    setDateRange({
+      from: subDays(new Date(), 14),
+      to: new Date(),
+    });
+  };
+
+  const toggleTenantSelection = (tenantId: string) => {
+    setFilters(prev => ({
+      ...prev,
+      tenant_ids: prev.tenant_ids.includes(tenantId)
+        ? prev.tenant_ids.filter(id => id !== tenantId)
+        : [...prev.tenant_ids, tenantId]
+    }));
+  };
+
+  const toggleCreatedBySelection = (userId: string) => {
+    setFilters(prev => ({
+      ...prev,
+      created_by_ids: prev.created_by_ids.includes(userId)
+        ? prev.created_by_ids.filter(id => id !== userId)
+        : [...prev.created_by_ids, userId]
+    }));
   };
 
   const statusOptions: StatusEnum[] = ['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', 'CANCELLING'];
 
-  const hasActiveFilters = filters.status || filters.tenant_id || filters.training_execution_name || filters.prefect_run_id;
+  const hasActiveFilters = filters.status || filters.tenant_ids.length > 0 || filters.created_by_ids.length > 0 || filters.training_execution_name || filters.prefect_run_id;
+
+  // Sort by creation date descending
+  const sortedRuns = [...trainingRunsData].sort((a, b) => 
+    new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -199,22 +269,143 @@ export default function TrainingRuns() {
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Created At Filter - Backend filter */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* Date Range Picker */}
             <div className="space-y-2">
-              <Label>Created At</Label>
-              <Select 
-                value={createdAtFilter} 
-                onValueChange={(v) => setCreatedAtFilter(v as CreatedAtFilter)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select time range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="60">Last 60 days</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Date Range</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "MMM dd, yyyy")
+                      )
+                    ) : (
+                      <span>Select date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange.from}
+                    selected={{ from: dateRange.from, to: dateRange.to }}
+                    onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                    numberOfMonths={2}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Created By Multi-Select */}
+            <div className="space-y-2">
+              <Label>Created By</Label>
+              <Popover open={createdByDropdownOpen} onOpenChange={setCreatedByDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {filters.created_by_ids.length > 0
+                        ? `${filters.created_by_ids.length} selected`
+                        : "All users"}
+                    </span>
+                    {filters.created_by_ids.length > 0 && (
+                      <X
+                        className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFilters(prev => ({ ...prev, created_by_ids: [] }));
+                        }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <div className="max-h-60 overflow-auto p-2">
+                    {authUsers.map((user) => (
+                      <div
+                        key={user.user_id}
+                        className="flex items-center space-x-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+                        onClick={() => toggleCreatedBySelection(user.user_id)}
+                      >
+                        <Checkbox
+                          checked={filters.created_by_ids.includes(user.user_id)}
+                          onCheckedChange={() => toggleCreatedBySelection(user.user_id)}
+                        />
+                        <span className="text-sm">{user.email}</span>
+                      </div>
+                    ))}
+                    {authUsers.length === 0 && (
+                      <p className="text-sm text-muted-foreground p-2">No users available</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Tenant Multi-Select */}
+            <div className="space-y-2">
+              <Label>Customer</Label>
+              <Popover open={tenantDropdownOpen} onOpenChange={setTenantDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {filters.tenant_ids.length > 0
+                        ? `${filters.tenant_ids.length} selected`
+                        : "All customers"}
+                    </span>
+                    {filters.tenant_ids.length > 0 && (
+                      <X
+                        className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFilters(prev => ({ ...prev, tenant_ids: [] }));
+                        }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <div className="max-h-60 overflow-auto p-2">
+                    {tenants.map((tenant) => (
+                      <div
+                        key={tenant.tenant_id}
+                        className="flex items-center space-x-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+                        onClick={() => toggleTenantSelection(tenant.tenant_id)}
+                      >
+                        <Checkbox
+                          checked={filters.tenant_ids.includes(tenant.tenant_id)}
+                          onCheckedChange={() => toggleTenantSelection(tenant.tenant_id)}
+                        />
+                        <span className="text-sm">{tenant.tenant_name}</span>
+                      </div>
+                    ))}
+                    {tenants.length === 0 && (
+                      <p className="text-sm text-muted-foreground p-2">No customers available</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Status Filter */}
@@ -222,7 +413,7 @@ export default function TrainingRuns() {
               <Label>Status</Label>
               <Select 
                 value={filters.status || 'all'} 
-                onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === 'all' ? '' : v as StatusEnum | '' }))}
+                onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === 'all' ? '' : v as StatusEnum }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
@@ -231,27 +422,6 @@ export default function TrainingRuns() {
                   <SelectItem value="all">All statuses</SelectItem>
                   {statusOptions.map(status => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Tenant Filter - populated from API response */}
-            <div className="space-y-2">
-              <Label>Customer</Label>
-              <Select 
-                value={filters.tenant_id || 'all'} 
-                onValueChange={(v) => setFilters(prev => ({ ...prev, tenant_id: v === 'all' ? '' : v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All customers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All customers</SelectItem>
-                  {availableTenants.map(tenant => (
-                    <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
-                      {tenant.customer_name}
-                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -278,13 +448,21 @@ export default function TrainingRuns() {
             </div>
           </div>
 
-          {hasActiveFilters && (
-            <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-4">
+            <Button onClick={handleSearch} disabled={isSearching} className="gap-2">
+              {isSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              Search
+            </Button>
+            {hasActiveFilters && (
               <Button variant="outline" onClick={handleClearFilters}>
                 Clear All Filters
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -296,15 +474,13 @@ export default function TrainingRuns() {
             <h3 className="text-lg font-medium mb-2">Loading training runs...</h3>
           </CardContent>
         </Card>
-      ) : filteredRuns.length === 0 ? (
+      ) : sortedRuns.length === 0 ? (
         <Card className="py-12">
           <CardContent className="text-center">
             <Play className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No training runs found</h3>
             <p className="text-muted-foreground mb-4">
-              {hasActiveFilters 
-                ? 'No training runs found matching the selected filters' 
-                : 'Start a new training run to see it here'}
+              No training runs found for the selected filters
             </p>
             <Button onClick={() => setCreateModalOpen(true)}>
               Create Training Run
@@ -313,10 +489,10 @@ export default function TrainingRuns() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRuns.map((run) => {
+          {sortedRuns.map((run) => {
             const user = users.find(u => u.id === run.userId);
             const artifacts = modelArtifacts.filter(a => a.trainingRunId === run.id);
-            const tenant = tenantMappings.find(t => t.tenant_id === run.tenantId);
+            const tenant = tenants.find(t => t.tenant_id === run.tenantId);
             
             return (
               <Card key={run.id} className="hover:border-primary/50 transition-colors">
