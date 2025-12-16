@@ -36,47 +36,62 @@ export const workflowsByTenant: Record<string, WorkflowInfo[]> = {
 
 // ========== TRTLLM Models (ASR Models) ==========
 export const trtllmModels: TRTLLMModel[] = [
-  { artifact_id: 'asr_001', training_execution_id: 'train_001', s3_path: 's3://models/whisper-v2.0', model_size_mb: 1500, created_at: '2024-12-01T10:00:00Z' },
-  { artifact_id: 'asr_002', training_execution_id: 'train_002', s3_path: 's3://models/whisper-v2.1', model_size_mb: 1600, created_at: '2025-01-01T10:00:00Z' },
-  { artifact_id: 'asr_003', training_execution_id: 'train_003', s3_path: 's3://models/whisper-large-v3', model_size_mb: 2500, created_at: '2025-01-10T10:00:00Z' },
+  { artifact_id: 'asr_001', training_execution_id: 'train_001', s3_path: 's3://models/whisper-v2.0', model_artifact_name: 'Whisper V2.0', model_size_mb: 1500, published: true, model_tag: 'v2.0', created_at: '2024-12-01T10:00:00Z', description: 'Whisper V2.0 base model' },
+  { artifact_id: 'asr_002', training_execution_id: 'train_002', s3_path: 's3://models/whisper-v2.1', model_artifact_name: 'Whisper V2.1', model_size_mb: 1600, published: true, model_tag: 'v2.1', created_at: '2025-01-01T10:00:00Z', description: 'Whisper V2.1 improved' },
+  { artifact_id: 'asr_003', training_execution_id: 'train_003', s3_path: 's3://models/whisper-large-v3', model_artifact_name: 'Whisper Large V3', model_size_mb: 2500, published: false, created_at: '2025-01-10T10:00:00Z', description: 'Whisper Large V3' },
 ];
 
 // ========== Base Model Artifacts (RAW_WEIGHT) ==========
 export const baseModelArtifacts: ModelArtifactResponse[] = [
   { 
     artifact_id: 'base_001', 
-    training_execution_id: 'train_base_001', 
-    training_execution_name: 'Whisper Large V2 Base',
+    training_execution_id: null, 
+    training_execution_name: null,
+    tenant_id: null,
     artifact_type: 'RAW_WEIGHT', 
     s3_path: 's3://models/base/whisper-large-v2', 
+    model_artifact_name: 'Whisper Large V2 Base',
     model_size_mb: 1500, 
+    published: true,
+    model_tag: 'whisper-large-v2',
     created_at: '2024-06-01T10:00:00Z' 
   },
   { 
     artifact_id: 'base_002', 
-    training_execution_id: 'train_base_002', 
-    training_execution_name: 'Whisper Large V3 Base',
+    training_execution_id: null, 
+    training_execution_name: null,
+    tenant_id: null,
     artifact_type: 'RAW_WEIGHT', 
     s3_path: 's3://models/base/whisper-large-v3', 
+    model_artifact_name: 'Whisper Large V3 Base',
     model_size_mb: 2500, 
+    published: true,
+    model_tag: 'whisper-large-v3',
     created_at: '2024-10-01T10:00:00Z' 
   },
   { 
     artifact_id: 'base_003', 
     training_execution_id: 'train_base_003', 
     training_execution_name: 'Customer A Fine-tuned v1',
+    tenant_id: 'tenant_001',
     artifact_type: 'RAW_WEIGHT', 
     s3_path: 's3://models/customer-a/finetuned-v1', 
+    model_artifact_name: 'Customer A Fine-tuned v1',
     model_size_mb: 1550, 
+    published: false,
     created_at: '2025-01-05T10:00:00Z' 
   },
   { 
     artifact_id: 'trtllm_001', 
     training_execution_id: 'train_001', 
     training_execution_name: 'Customer A ASR Model v2.1',
+    tenant_id: 'tenant_001',
     artifact_type: 'TRTLLM', 
     s3_path: 's3://models/customer-a/trtllm-v1', 
+    model_artifact_name: 'Customer A TRTLLM v1',
     model_size_mb: 800, 
+    published: true,
+    model_tag: 'customer-a-v1',
     created_at: '2025-01-15T14:30:00Z' 
   },
 ];

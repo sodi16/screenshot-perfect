@@ -18,9 +18,12 @@ export interface WorkflowInfo {
 
 export interface TRTLLMModel {
   artifact_id: string;
-  training_execution_id: string;
+  training_execution_id?: string | null;
   s3_path: string;
+  model_artifact_name: string;
   model_size_mb?: number | null;
+  published: boolean;
+  model_tag?: string | null;
   created_at: string;
   tenant_id?: string | null;
   description?: string | null;
@@ -131,6 +134,8 @@ export interface TrainingExecutionResponse {
   s3_model_path?: string | null;
   error_message?: string | null;
   prefect_run_id?: string | null;
+  wandb_url?: string | null;
+  base_model_artifact_id?: string | null;
   tenant_id?: string | null;
   batch_size?: number | null;
   learning_rate?: number | null;
@@ -142,11 +147,16 @@ export interface TrainingExecutionResponse {
 
 export interface ModelArtifactResponse {
   artifact_id: string;
-  training_execution_id: string;
+  training_execution_id?: string | null;
   training_execution_name?: string | null;
+  tenant_id?: string | null;
   artifact_type: string;
   s3_path: string;
+  model_artifact_name: string;
   model_size_mb?: number | null;
+  published: boolean;
+  model_tag?: string | null;
+  model_registry_url?: string | null;
   created_at: string;
 }
 
@@ -162,7 +172,10 @@ export interface ModelArtifactNested {
   artifact_id: string;
   artifact_type: string;
   s3_path: string;
+  model_artifact_name: string;
   model_size_mb?: number | null;
+  published: boolean;
+  model_tag?: string | null;
   created_at: string;
 }
 
@@ -186,6 +199,8 @@ export interface TrainingExecutionDetailsResponse {
   tenant_id?: string | null;
   customer_name?: string | null;
   prefect_run_id?: string | null;
+  wandb_url?: string | null;
+  base_model_artifact_id?: string | null;
   description?: string | null;
   s3_model_path?: string | null;
   hyperparameters?: Record<string, unknown> | null;

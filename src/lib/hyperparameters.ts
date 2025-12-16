@@ -10,24 +10,7 @@ export interface HyperparameterConfig {
 }
 
 export const hyperparameters: HyperparameterConfig[] = [
-  {
-    argument: 'train-data-path',
-    type: 'str_or_list',
-    defaultValue: '',
-    description: 'training data path',
-  },
-  {
-    argument: 'validation-data-path',
-    type: 'str_or_list',
-    defaultValue: '',
-    description: 'validation data path',
-  },
-  {
-    argument: 'test-data-path',
-    type: 'str_or_list',
-    defaultValue: '',
-    description: 'test data path',
-  },
+  // Note: train-data-path, test-data-path, validation-data-path are auto-generated from selected datasets
   {
     argument: 'gradient-accumulation-steps',
     type: 'int',
