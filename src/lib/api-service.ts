@@ -84,6 +84,23 @@ export async function fetchModelArtifactsByType(artifactType: ArtifactType): Pro
   return apiCall<ModelArtifactResponse[]>(`/model_artifacts/by-type?artifact_type=${artifactType}`);
 }
 
+// Fetch weight models for base model selection in training creation
+export async function fetchWeightModels(tenantId: string | null): Promise<ModelArtifactResponse[]> {
+  if (APP_CONFIG.useDummyData) {
+    // Filter: tenant-specific models or general base models (tenant_id is null)
+    return Promise.resolve(
+      baseModelArtifacts.filter(a => 
+        a.artifact_type === 'RAW_WEIGHT' && 
+        (tenantId ? a.tenant_id === tenantId || a.tenant_id === null : a.tenant_id === null)
+      )
+    );
+  }
+  
+  return apiCall<ModelArtifactResponse[]>(
+    `/model_artifacts/weight-models?tenant_id=${tenantId || 'null'}`
+  );
+}
+
 // ========== Datasets (Training Data Preparation) ==========
 
 export async function fetchDatasets(): Promise<DataGeneration[]> {
@@ -257,7 +274,9 @@ export async function fetchTrainingExecutionDetails(id: string): Promise<Trainin
         artifact_id: `artifact_${run.id}`,
         artifact_type: 'RAW_WEIGHT',
         s3_path: run.s3Path,
+        model_artifact_name: `${run.name} Model`,
         model_size_mb: 1024,
+        published: false,
         created_at: run.completedAt || run.startedAt,
       }] : [],
       evaluations: [],

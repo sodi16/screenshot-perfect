@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, ChevronRight, ChevronLeft, Loader2, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { 
-  clients, 
-  modelFormats, 
   gpuTypes, 
   instanceTypes, 
   dataGenerations 
@@ -33,16 +31,19 @@ import {
   getDefaultHyperparameters,
   type HyperparameterConfig 
 } from '@/lib/hyperparameters';
-import { createTrainingRun } from '@/lib/api-service';
+import { createTrainingRun, fetchTenantMappings, fetchWeightModels } from '@/lib/api-service';
+import type { TenantMapping, ModelArtifactResponse } from '@/lib/api-types';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 const steps = [
   { id: 1, title: 'Basic Information' },
   { id: 2, title: 'Select Data' },
-  { id: 3, title: 'Hyperparameters' },
-  { id: 4, title: 'Prefect Parameters' },
-  { id: 5, title: 'Review & Submit' },
+  { id: 3, title: 'Select Base Model' },
+  { id: 4, title: 'Hyperparameters' },
+  { id: 5, title: 'Prefect Parameters' },
+  { id: 6, title: 'Review & Submit' },
 ];
 
 interface CreateTrainingFormProps {
@@ -53,14 +54,17 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [tenants, setTenants] = useState<TenantMapping[]>([]);
+  const [weightModels, setWeightModels] = useState<ModelArtifactResponse[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
     description: '',
-    client: '',
-    modelFormat: '',
+    tenantId: '',
+    customerName: '',
     selectedDataGens: [] as string[],
+    baseModelArtifactId: '',
     // Prefect params
     gpuType: 'V100',
     instanceType: 'p3.2xlarge',
@@ -74,12 +78,35 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
     getDefaultHyperparameters()
   );
 
+  // Load tenants on mount
+  useEffect(() => {
+    fetchTenantMappings().then(setTenants).catch(console.error);
+  }, []);
+
+  // Load weight models when tenant changes
+  useEffect(() => {
+    if (formData.tenantId) {
+      setLoadingModels(true);
+      fetchWeightModels(formData.tenantId)
+        .then(setWeightModels)
+        .catch(console.error)
+        .finally(() => setLoadingModels(false));
+    }
+  }, [formData.tenantId]);
+
   const updateForm = (key: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
   const updateHyperparam = (key: string, value: string | number | boolean) => {
-    setHyperparams(prev => ({ ...prev, [key]: value }));
+    setHyperparams(prev => {
+      const updated = { ...prev, [key]: value };
+      // Link use-lora and lora-merge-and-unload
+      if (key === 'use-lora') {
+        updated['lora-merge-and-unload'] = value;
+      }
+      return updated;
+    });
   };
 
   const toggleDataGen = (id: string) => {
@@ -91,12 +118,19 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
     }));
   };
 
+  // Auto-generate training execution name
+  const generateTrainingName = () => {
+    const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+    return `${formData.customerName || 'training'}_${timestamp}`;
+  };
+
   const canProceed = () => {
     switch (currentStep) {
-      case 1: return formData.name && formData.client && formData.modelFormat;
+      case 1: return formData.tenantId;
       case 2: return formData.selectedDataGens.length > 0;
-      case 3: return true;
+      case 3: return formData.baseModelArtifactId;
       case 4: return true;
+      case 5: return true;
       default: return true;
     }
   };
@@ -115,11 +149,25 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
         }
       });
 
+      // Auto-generate data paths from selected datasets
+      const selectedDatasets = dataGenerations.filter(d => formData.selectedDataGens.includes(d.id));
+      const trainPaths = selectedDatasets.map(d => d.trainS3Path).filter(Boolean);
+      const testPaths = selectedDatasets.map(d => d.testS3Path).filter(Boolean);
+      const valPaths = selectedDatasets.map(d => d.valS3Path).filter(Boolean);
+
+      // Add data paths to hyperparameters as arrays (converted to JSON strings for type compatibility)
+      const finalHyperparams: Record<string, unknown> = {
+        ...allHyperparams,
+        'train-data-path': trainPaths,
+        'test-data-path': testPaths,
+        'validation-data-path': valPaths,
+      };
+
       await createTrainingRun({
-        training_execution_name: formData.name,
-        customer_name: formData.client,
+        training_execution_name: generateTrainingName(),
+        customer_name: formData.customerName,
         description: formData.description,
-        hyperparameters: allHyperparams,
+        hyperparameters: finalHyperparams,
         prefect_parameters: {
           gpuType: formData.gpuType,
           instanceType: formData.instanceType,
@@ -128,6 +176,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
           retryAttempts: formData.retryAttempts,
         },
         training_data_preparation_ids: formData.selectedDataGens,
+        base_model_artifact_id: formData.baseModelArtifactId,
       });
       
       toast.success('Training run created successfully!');
@@ -143,6 +192,9 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
   const renderHyperparameterInput = (config: HyperparameterConfig) => {
     const key = config.argument;
     const value = hyperparams[key];
+    
+    // Disable lora-merge-and-unload as it's linked to use-lora
+    const isDisabled = key === 'lora-merge-and-unload';
 
     switch (config.type) {
       case 'int':
@@ -151,6 +203,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
             type="number"
             value={value as number}
             onChange={(e) => updateHyperparam(key, parseInt(e.target.value) || 0)}
+            disabled={isDisabled}
           />
         );
       case 'float':
@@ -160,6 +213,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
             step="0.0001"
             value={value as number}
             onChange={(e) => updateHyperparam(key, parseFloat(e.target.value) || 0)}
+            disabled={isDisabled}
           />
         );
       case 'custom_bool':
@@ -167,6 +221,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
           <Switch
             checked={value as boolean}
             onCheckedChange={(checked) => updateHyperparam(key, checked)}
+            disabled={isDisabled}
           />
         );
       case 'str':
@@ -178,10 +233,13 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
             value={value as string}
             onChange={(e) => updateHyperparam(key, e.target.value)}
             placeholder={config.defaultValue || ''}
+            disabled={isDisabled}
           />
         );
     }
   };
+
+  const selectedBaseModel = weightModels.find(m => m.artifact_id === formData.baseModelArtifactId);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -206,7 +264,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`h-0.5 w-16 mx-2 ${currentStep > step.id ? 'bg-primary' : 'bg-border'}`} />
+                <div className={`h-0.5 w-12 mx-1 ${currentStep > step.id ? 'bg-primary' : 'bg-border'}`} />
               )}
             </div>
           ))}
@@ -218,11 +276,12 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
         <CardHeader>
           <CardTitle>{steps[currentStep - 1].title}</CardTitle>
           <CardDescription>
-            {currentStep === 1 && 'Enter the basic details for your training run'}
+            {currentStep === 1 && 'Select the customer and enter basic details'}
             {currentStep === 2 && 'Select the datasets to use for training'}
-            {currentStep === 3 && 'Configure the model hyperparameters'}
-            {currentStep === 4 && 'Set up the Prefect execution parameters'}
-            {currentStep === 5 && 'Review your configuration and submit'}
+            {currentStep === 3 && 'Select the base model to fine-tune'}
+            {currentStep === 4 && 'Configure the model hyperparameters'}
+            {currentStep === 5 && 'Set up the Prefect execution parameters'}
+            {currentStep === 6 && 'Review your configuration and submit'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -230,13 +289,26 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
           {currentStep === 1 && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="name">Training Run Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => updateForm('name', e.target.value)}
-                  placeholder="e.g., Customer A ASR Model v2.1"
-                />
+                <Label>Customer *</Label>
+                <Select 
+                  value={formData.tenantId} 
+                  onValueChange={(v) => {
+                    const tenant = tenants.find(t => t.tenant_id === v);
+                    updateForm('tenantId', v);
+                    updateForm('customerName', tenant?.tenant_name || '');
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => (
+                      <SelectItem key={t.tenant_id} value={t.tenant_id}>
+                        {t.tenant_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -248,34 +320,13 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Client *</Label>
-                  <Select value={formData.client} onValueChange={(v) => updateForm('client', v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {formData.tenantId && (
+                <div className="p-3 bg-secondary/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Training name will be auto-generated as: <span className="font-mono text-foreground">{generateTrainingName()}</span>
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Model Format *</Label>
-                  <Select value={formData.modelFormat} onValueChange={(v) => updateForm('modelFormat', v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelFormats.map(f => (
-                        <SelectItem key={f} value={f}>{f}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              )}
             </>
           )}
 
@@ -310,6 +361,9 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                         <span>Test: {gen.testRecords.toLocaleString()}</span>
                         <span>Val: {gen.valRecords.toLocaleString()}</span>
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                        {gen.s3Path}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -317,14 +371,79 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
             </div>
           )}
 
-          {/* Step 3: Hyperparameters */}
+          {/* Step 3: Select Base Weight Model */}
           {currentStep === 3 && (
+            <div className="space-y-4">
+              {loadingModels ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-muted-foreground">Loading models...</span>
+                </div>
+              ) : weightModels.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No base models available for this customer.
+                </p>
+              ) : (
+                weightModels.map((model) => (
+                  <div
+                    key={model.artifact_id}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      formData.baseModelArtifactId === model.artifact_id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => updateForm('baseModelArtifactId', model.artifact_id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
+                        formData.baseModelArtifactId === model.artifact_id
+                          ? 'border-primary bg-primary'
+                          : 'border-muted-foreground'
+                      }`}>
+                        {formData.baseModelArtifactId === model.artifact_id && (
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium">{model.model_artifact_name}</h4>
+                          {model.tenant_id === null && (
+                            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                              Base Model
+                            </span>
+                          )}
+                          {model.published && model.model_tag && (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                              {model.model_tag}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                          {model.s3_path}
+                        </p>
+                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                          {model.model_size_mb && <span>Size: {model.model_size_mb} MB</span>}
+                          <span>Created: {new Date(model.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Hyperparameters */}
+          {currentStep === 4 && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {visibleHyperparameters.map((config) => (
                   <div key={config.argument} className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label className="text-sm">{config.argument}</Label>
+                      {config.argument === 'lora-merge-and-unload' && (
+                        <span className="text-xs text-muted-foreground">(linked to use-lora)</span>
+                      )}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Info className="h-3 w-3 text-muted-foreground cursor-help" />
@@ -344,8 +463,8 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
             </div>
           )}
 
-          {/* Step 4: Prefect Parameters */}
-          {currentStep === 4 && (
+          {/* Step 5: Prefect Parameters */}
+          {currentStep === 5 && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -406,8 +525,8 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
             </>
           )}
 
-          {/* Step 5: Review */}
-          {currentStep === 5 && (
+          {/* Step 6: Review */}
+          {currentStep === 6 && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -415,18 +534,31 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Name</span>
-                      <span className="font-medium">{formData.name}</span>
+                      <span className="font-medium font-mono text-xs">{generateTrainingName()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Client</span>
-                      <span>{formData.client}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Model Format</span>
-                      <span>{formData.modelFormat}</span>
+                      <span className="text-muted-foreground">Customer</span>
+                      <span>{formData.customerName}</span>
                     </div>
                   </div>
                 </div>
+                <div className="space-y-4">
+                  <h4 className="font-medium text-muted-foreground">Base Model</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Model</span>
+                      <span>{selectedBaseModel?.model_artifact_name || 'Not selected'}</span>
+                    </div>
+                    {selectedBaseModel?.model_size_mb && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Size</span>
+                        <span>{selectedBaseModel.model_size_mb} MB</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h4 className="font-medium text-muted-foreground">Key Hyperparameters</h4>
                   <div className="space-y-2 text-sm">
@@ -443,8 +575,25 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                       <span>{hyperparams['max-steps']}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Optimizer</span>
-                      <span>{hyperparams['optim']}</span>
+                      <span className="text-muted-foreground">Use LoRA</span>
+                      <span>{hyperparams['use-lora'] ? 'Yes' : 'No'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h4 className="font-medium text-muted-foreground">Prefect Parameters</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">GPU Type</span>
+                      <span>{formData.gpuType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Instance</span>
+                      <span>{formData.instanceType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Memory</span>
+                      <span>{formData.memory}GB</span>
                     </div>
                   </div>
                 </div>
@@ -475,7 +624,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
               <ChevronLeft className="mr-1 h-4 w-4" />
               Previous
             </Button>
-            {currentStep < 5 ? (
+            {currentStep < 6 ? (
               <Button
                 onClick={() => setCurrentStep(s => s + 1)}
                 disabled={!canProceed()}
