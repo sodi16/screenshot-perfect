@@ -545,10 +545,12 @@ export default function TrainingRuns() {
                         variant="outline" 
                         size="sm" 
                         className="flex-1"
-                        onClick={() => handleOpenDetails(run)}
+                        asChild
                       >
-                        <Eye className="mr-1 h-4 w-4" />
-                        Details
+                        <Link to={`/training-runs/${run.id}`}>
+                          <Eye className="mr-1 h-4 w-4" />
+                          Details
+                        </Link>
                       </Button>
                       {run.status === 'success' && artifacts.length > 0 && (
                         <Button variant="outline" size="sm" asChild>
