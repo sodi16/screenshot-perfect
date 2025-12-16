@@ -264,7 +264,7 @@ export async function fetchTrainingExecutionDetails(id: string): Promise<Trainin
     };
   }
   
-  return apiCall<TrainingExecutionDetailsResponse>(`/training/${id}`);
+  return apiCall<TrainingExecutionDetailsResponse>(`/training/${id}/details`);
 }
 
 export async function createTrainingRun(request: TrainingExecutionCreate): Promise<TrainingExecutionResponse> {
