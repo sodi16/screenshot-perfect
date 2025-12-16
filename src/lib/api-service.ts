@@ -9,6 +9,7 @@ import type {
   TrainingDataPreparationResponse,
   TrainingExecutionCreate,
   TrainingExecutionResponse,
+  TrainingExecutionDetailsResponse,
   PaginatedResponse,
   TenantMapping,
   WorkflowInfo,
@@ -219,6 +220,51 @@ export async function fetchTrainingRunById(id: string): Promise<TrainingRun | nu
   
   const response = await apiCall<TrainingExecutionResponse>(`/training/${id}`);
   return mapApiTrainingToTrainingRun(response);
+}
+
+export async function fetchTrainingExecutionDetails(id: string): Promise<TrainingExecutionDetailsResponse> {
+  if (APP_CONFIG.useDummyData) {
+    // Return mock data for development
+    const run = trainingRuns.find(t => t.id === id);
+    if (!run) throw new Error('Training not found');
+    
+    return {
+      training_execution_id: run.id,
+      training_execution_name: run.name,
+      status: run.status === 'success' ? 'COMPLETED' : run.status === 'failed' ? 'FAILED' : run.status === 'running' ? 'RUNNING' : 'PENDING',
+      created_at: run.startedAt,
+      started_at: run.startedAt,
+      completed_at: run.completedAt,
+      error_message: run.errorMessage,
+      tenant_id: run.tenantId,
+      customer_name: run.client,
+      prefect_run_id: run.prefectRunId,
+      description: run.description,
+      s3_model_path: run.s3Path,
+      hyperparameters: run.parameters.hyperparameters,
+      prefect_parameters: run.parameters.prefectParams,
+      created_by_user_email: 'user@example.com',
+      training_data_preparations: run.dataGenerations.map(dgId => {
+        const dg = dataGenerations.find(d => d.id === dgId);
+        return {
+          training_data_preparation_id: dgId,
+          dataset_name: dg?.name || 'Unknown',
+          customer_name: dg?.client,
+          s3_root_path: dg?.s3Path || '',
+        };
+      }),
+      model_artifacts: run.status === 'success' ? [{
+        artifact_id: `artifact_${run.id}`,
+        artifact_type: 'RAW_WEIGHT',
+        s3_path: run.s3Path,
+        model_size_mb: 1024,
+        created_at: run.completedAt || run.startedAt,
+      }] : [],
+      evaluations: [],
+    };
+  }
+  
+  return apiCall<TrainingExecutionDetailsResponse>(`/training/${id}`);
 }
 
 export async function createTrainingRun(request: TrainingExecutionCreate): Promise<TrainingExecutionResponse> {

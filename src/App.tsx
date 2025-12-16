@@ -9,6 +9,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import TrainingRuns from "./pages/TrainingRuns";
+import TrainingExecutionDetail from "./pages/TrainingExecutionDetail";
 import Datasets from "./pages/Datasets";
 import DatasetDetail from "./pages/DatasetDetail";
 import ModelArtifacts from "./pages/ModelArtifacts";
@@ -43,6 +44,7 @@ function AppRoutes() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/training-runs" element={<TrainingRuns />} />
+        <Route path="/training-runs/:trainingId" element={<TrainingExecutionDetail />} />
         <Route path="/datasets" element={<Datasets />} />
         <Route path="/datasets/:datasetId" element={<DatasetDetail />} />
         <Route path="/model-artifacts" element={<ModelArtifacts />} />

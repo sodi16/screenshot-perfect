@@ -150,6 +150,53 @@ export interface ModelArtifactResponse {
   created_at: string;
 }
 
+// Training Execution Details nested types
+export interface TrainingDataPreparationNested {
+  training_data_preparation_id: string;
+  dataset_name: string;
+  customer_name?: string | null;
+  s3_root_path: string;
+}
+
+export interface ModelArtifactNested {
+  artifact_id: string;
+  artifact_type: string;
+  s3_path: string;
+  model_size_mb?: number | null;
+  created_at: string;
+}
+
+export interface EvaluationNested {
+  evaluation_id: string;
+  s3_results_path: string;
+  accuracy?: number | null;
+  error_message?: string | null;
+  evaluated_at: string;
+}
+
+export interface TrainingExecutionDetailsResponse {
+  training_execution_id: string;
+  training_execution_name: string;
+  status: StatusEnum;
+  created_at: string;
+  updated_at?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  error_message?: string | null;
+  tenant_id?: string | null;
+  customer_name?: string | null;
+  prefect_run_id?: string | null;
+  description?: string | null;
+  s3_model_path?: string | null;
+  hyperparameters?: Record<string, unknown> | null;
+  prefect_parameters?: Record<string, unknown> | null;
+  created_by_user_email?: string | null;
+  updated_by_user_email?: string | null;
+  training_data_preparations?: TrainingDataPreparationNested[];
+  model_artifacts?: ModelArtifactNested[];
+  evaluations?: EvaluationNested[];
+}
+
 export interface UserResponse {
   user_id: string;
   email: string;
