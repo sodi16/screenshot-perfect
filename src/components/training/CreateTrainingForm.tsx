@@ -22,8 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import { 
   gpuTypes, 
-  instanceTypes, 
-  dataGenerations 
+  instanceTypes 
 } from '@/lib/mock-data';
 import { 
   visibleHyperparameters, 
@@ -31,8 +30,8 @@ import {
   getDefaultHyperparameters,
   type HyperparameterConfig 
 } from '@/lib/hyperparameters';
-import { createTrainingRun, fetchTenantMappings, fetchWeightModels } from '@/lib/api-service';
-import type { TenantMapping, ModelArtifactResponse } from '@/lib/api-types';
+import { createTrainingRun, fetchTenantMappings, fetchWeightModels, fetchTrainingDataPreparationsByTenant } from '@/lib/api-service';
+import type { TenantMapping, ModelArtifactResponse, TrainingDataPreparationResponse } from '@/lib/api-types';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -57,6 +56,8 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
   const [tenants, setTenants] = useState<TenantMapping[]>([]);
   const [weightModels, setWeightModels] = useState<ModelArtifactResponse[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [trainingDataPreparations, setTrainingDataPreparations] = useState<TrainingDataPreparationResponse[]>([]);
+  const [loadingDataPreparations, setLoadingDataPreparations] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -83,14 +84,22 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
     fetchTenantMappings().then(setTenants).catch(console.error);
   }, []);
 
-  // Load weight models when tenant changes
+  // Load weight models and training data preparations when tenant changes
   useEffect(() => {
     if (formData.tenantId) {
+      // Load weight models
       setLoadingModels(true);
       fetchWeightModels(formData.tenantId)
         .then(setWeightModels)
         .catch(console.error)
         .finally(() => setLoadingModels(false));
+
+      // Load training data preparations
+      setLoadingDataPreparations(true);
+      fetchTrainingDataPreparationsByTenant(formData.tenantId)
+        .then(setTrainingDataPreparations)
+        .catch(console.error)
+        .finally(() => setLoadingDataPreparations(false));
     }
   }, [formData.tenantId]);
 
@@ -149,13 +158,29 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
         }
       });
 
-      // Auto-generate data paths from selected datasets
-      const selectedDatasets = dataGenerations.filter(d => formData.selectedDataGens.includes(d.id));
-      const trainPaths = selectedDatasets.map(d => d.trainS3Path).filter(Boolean);
-      const testPaths = selectedDatasets.map(d => d.testS3Path).filter(Boolean);
-      const valPaths = selectedDatasets.map(d => d.valS3Path).filter(Boolean);
+      // Auto-generate data paths from selected training data preparations
+      const selectedPreparations = trainingDataPreparations.filter(prep => 
+        formData.selectedDataGens.includes(prep.training_data_preparation_id)
+      );
+      
+      // Extract file paths by type
+      const trainPaths: string[] = [];
+      const testPaths: string[] = [];
+      const valPaths: string[] = [];
+      
+      selectedPreparations.forEach(prep => {
+        if (prep.files) {
+          const trainFile = prep.files.find(f => f.file_type === 'train');
+          const testFile = prep.files.find(f => f.file_type === 'test');
+          const valFile = prep.files.find(f => f.file_type === 'val');
+          
+          if (trainFile) trainPaths.push(trainFile.s3_path);
+          if (testFile) testPaths.push(testFile.s3_path);
+          if (valFile) valPaths.push(valFile.s3_path);
+        }
+      });
 
-      // Add data paths to hyperparameters as arrays (converted to JSON strings for type compatibility)
+      // Add data paths to hyperparameters as arrays
       const finalHyperparams: Record<string, unknown> = {
         ...allHyperparams,
         'train-data-path': trainPaths,
@@ -323,7 +348,7 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
               {formData.tenantId && (
                 <div className="p-3 bg-secondary/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    Training name will be auto-generated as: <span className="font-mono text-foreground">{generateTrainingName()}</span>
+                    Training name will be auto-generated as utc timestamp: <span className="font-mono text-foreground">{generateTrainingName()}</span>
                   </p>
                 </div>
               )}
@@ -333,41 +358,54 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
           {/* Step 2: Select Data */}
           {currentStep === 2 && (
             <div className="space-y-4">
-              {dataGenerations.map((gen) => (
-                <div
-                  key={gen.id}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    formData.selectedDataGens.includes(gen.id)
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => toggleDataGen(gen.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <Checkbox 
-                      checked={formData.selectedDataGens.includes(gen.id)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{gen.name}</h4>
-                        <span className="text-sm text-muted-foreground">{gen.client}</span>
+              {loadingDataPreparations ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-muted-foreground">Loading training data preparations...</span>
+                </div>
+              ) : trainingDataPreparations.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No training data preparations available for this customer.
+                </p>
+              ) : (
+                trainingDataPreparations.map((prep) => (
+                  <div
+                    key={prep.training_data_preparation_id}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      formData.selectedDataGens.includes(prep.training_data_preparation_id)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => toggleDataGen(prep.training_data_preparation_id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        checked={formData.selectedDataGens.includes(prep.training_data_preparation_id)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium">{prep.dataset_name}</h4>
+                          <span className="text-sm text-muted-foreground">{prep.customer_name}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                          ID: {prep.training_data_preparation_id}
+                        </p>
+                        {(prep.date_range_start || prep.date_range_end) && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {prep.date_range_start && new Date(prep.date_range_start).toLocaleDateString()} 
+                            {prep.date_range_start && prep.date_range_end && ' - '}
+                            {prep.date_range_end && new Date(prep.date_range_end).toLocaleDateString()}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                          {prep.s3_root_path}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {gen.dateRangeStart} - {gen.dateRangeEnd}
-                      </p>
-                      <div className="flex gap-4 mt-2 text-xs">
-                        <span>Train: {gen.trainRecords.toLocaleString()}</span>
-                        <span>Test: {gen.testRecords.toLocaleString()}</span>
-                        <span>Val: {gen.valRecords.toLocaleString()}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-                        {gen.s3Path}
-                      </p>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
 
@@ -546,8 +584,8 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                   <h4 className="font-medium text-muted-foreground">Base Model</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Model</span>
-                      <span>{selectedBaseModel?.model_artifact_name || 'Not selected'}</span>
+                      <span className="text-muted-foreground">Model Tag</span>
+                      <span>{selectedBaseModel?.model_tag || 'Not selected'}</span>
                     </div>
                     {selectedBaseModel?.model_size_mb && (
                       <div className="flex justify-between">
@@ -599,13 +637,18 @@ export function CreateTrainingForm({ onSuccess }: CreateTrainingFormProps) {
                 </div>
               </div>
               <div className="space-y-4">
-                <h4 className="font-medium text-muted-foreground">Datasets ({formData.selectedDataGens.length})</h4>
+                <h4 className="font-medium text-muted-foreground">Training Data Preparations ({formData.selectedDataGens.length})</h4>
                 <div className="space-y-2">
                   {formData.selectedDataGens.map(id => {
-                    const gen = dataGenerations.find(g => g.id === id);
-                    return gen ? (
+                    const prep = trainingDataPreparations.find(p => p.training_data_preparation_id === id);
+                    return prep ? (
                       <div key={id} className="text-sm p-2 bg-secondary rounded">
-                        {gen.name} - {gen.totalRecords.toLocaleString()} records
+                        <div className="font-medium">{prep.dataset_name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {prep.date_range_start && prep.date_range_end && 
+                            `${new Date(prep.date_range_start).toLocaleDateString()} - ${new Date(prep.date_range_end).toLocaleDateString()}`
+                          }
+                        </div>
                       </div>
                     ) : null;
                   })}

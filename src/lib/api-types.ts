@@ -187,6 +187,15 @@ export interface EvaluationNested {
   evaluated_at: string;
 }
 
+export interface BaseModelArtifactNested {
+  artifact_id: string;
+  s3_path: string;
+  model_registry_url?: string | null;
+  model_artifact_name: string;
+  model_tag?: string | null;
+  model_size_mb?: number | null;
+}
+
 export interface TrainingExecutionDetailsResponse {
   training_execution_id: string;
   training_execution_name: string;
@@ -200,7 +209,7 @@ export interface TrainingExecutionDetailsResponse {
   customer_name?: string | null;
   prefect_run_id?: string | null;
   wandb_url?: string | null;
-  base_model_artifact_id?: string | null;
+  base_model_artifact?: BaseModelArtifactNested | null;
   description?: string | null;
   s3_model_path?: string | null;
   hyperparameters?: Record<string, unknown> | null;

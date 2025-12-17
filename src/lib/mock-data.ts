@@ -1,4 +1,4 @@
-import type { TenantMapping, WorkflowInfo, TRTLLMModel, ModelArtifactResponse } from './api-types';
+import type { TenantMapping, WorkflowInfo, TRTLLMModel, ModelArtifactResponse, TrainingDataPreparationResponse } from './api-types';
 
 export const users = [
   { id: '1', username: 'john.doe', email: 'john@aiola.com', avatar: '' },
@@ -401,6 +401,151 @@ export const modelArtifacts: ModelArtifact[] = [
     s3Path: 's3://aiola-models/customer-a/train_001/checkpoint_best.pt',
     sizeMb: 122.3,
     createdAt: '2025-01-15T12:00:00Z'
+  }
+];
+
+// ========== Training Data Preparations ==========
+export const trainingDataPreparations: TrainingDataPreparationResponse[] = [
+  {
+    training_data_preparation_id: '660e8400-e29b-41d4-a716-446655440003',
+    dataset_name: 'Customer A - Q4 2024 Dataset',
+    customer_name: 'Customer A',
+    s3_root_path: 's3://aiola-datasets/customer-a/q4-2024/',
+    tenant_id: 'tenant_001',
+    prefect_run_id: 'prefect_data_001',
+    error_message: null,
+    date_range_start: '2024-10-01',
+    date_range_end: '2024-12-31',
+    languages: ['English', 'Spanish'],
+    asr_model_versions: ['v2.0'],
+    workflow_ids: ['wf_12345'],
+    is_noisy: false,
+    overlapping_speech: false,
+    is_not_relevant: null,
+    is_voice_recording_na: null,
+    is_partial_audio: null,
+    is_unclear_audio: null,
+    created_at: '2025-01-10T12:00:00Z',
+    files: [
+      {
+        file_id: 'file_001',
+        file_type: 'train',
+        s3_path: 's3://aiola-datasets/customer-a/q4-2024/train.csv',
+        file_name: 'train.csv',
+        record_count: 35000,
+        created_at: '2025-01-10T12:00:00Z'
+      },
+      {
+        file_id: 'file_002',
+        file_type: 'test',
+        s3_path: 's3://aiola-datasets/customer-a/q4-2024/test.csv',
+        file_name: 'test.csv',
+        record_count: 10000,
+        created_at: '2025-01-10T12:00:00Z'
+      },
+      {
+        file_id: 'file_003',
+        file_type: 'val',
+        s3_path: 's3://aiola-datasets/customer-a/q4-2024/val.csv',
+        file_name: 'val.csv',
+        record_count: 5000,
+        created_at: '2025-01-10T12:00:00Z'
+      }
+    ]
+  },
+  {
+    training_data_preparation_id: '660e8400-e29b-41d4-a716-446655440004',
+    dataset_name: 'Customer B - Multilingual Dataset',
+    customer_name: 'Customer B',
+    s3_root_path: 's3://aiola-datasets/customer-b/multilingual/',
+    tenant_id: 'tenant_002',
+    prefect_run_id: 'prefect_data_002',
+    error_message: null,
+    date_range_start: '2024-11-01',
+    date_range_end: '2025-01-15',
+    languages: ['English', 'Spanish', 'French', 'German'],
+    asr_model_versions: ['v2.1'],
+    workflow_ids: ['wf_22345', 'wf_22346'],
+    is_noisy: false,
+    overlapping_speech: true,
+    is_not_relevant: false,
+    is_voice_recording_na: false,
+    is_partial_audio: null,
+    is_unclear_audio: null,
+    created_at: '2025-01-18T14:00:00Z',
+    files: [
+      {
+        file_id: 'file_004',
+        file_type: 'train',
+        s3_path: 's3://aiola-datasets/customer-b/multilingual/train.csv',
+        file_name: 'train.csv',
+        record_count: 56000,
+        created_at: '2025-01-18T14:00:00Z'
+      },
+      {
+        file_id: 'file_005',
+        file_type: 'test',
+        s3_path: 's3://aiola-datasets/customer-b/multilingual/test.csv',
+        file_name: 'test.csv',
+        record_count: 16000,
+        created_at: '2025-01-18T14:00:00Z'
+      },
+      {
+        file_id: 'file_006',
+        file_type: 'val',
+        s3_path: 's3://aiola-datasets/customer-b/multilingual/val.csv',
+        file_name: 'val.csv',
+        record_count: 8000,
+        created_at: '2025-01-18T14:00:00Z'
+      }
+    ]
+  },
+  {
+    training_data_preparation_id: '660e8400-e29b-41d4-a716-446655440005',
+    dataset_name: 'Customer A - January 2025 Update',
+    customer_name: 'Customer A',
+    s3_root_path: 's3://aiola-datasets/customer-a/jan-2025/',
+    tenant_id: 'tenant_001',
+    prefect_run_id: 'prefect_data_003',
+    error_message: null,
+    date_range_start: '2025-01-01',
+    date_range_end: '2025-01-15',
+    languages: ['English'],
+    asr_model_versions: ['v2.1'],
+    workflow_ids: null,
+    is_noisy: null,
+    overlapping_speech: null,
+    is_not_relevant: null,
+    is_voice_recording_na: null,
+    is_partial_audio: false,
+    is_unclear_audio: false,
+    created_at: '2025-01-16T09:00:00Z',
+    files: [
+      {
+        file_id: 'file_007',
+        file_type: 'train',
+        s3_path: 's3://aiola-datasets/customer-a/jan-2025/train.csv',
+        file_name: 'train.csv',
+        record_count: 8400,
+        created_at: '2025-01-16T09:00:00Z'
+      },
+      {
+        file_id: 'file_008',
+        file_type: 'test',
+        s3_path: 's3://aiola-datasets/customer-a/jan-2025/test.csv',
+        file_name: 'test.csv',
+        record_count: 2400,
+        created_at: '2025-01-16T09:00:00Z'
+      },
+      {
+        file_id: 'file_009',
+        file_type: 'val',
+        s3_path: 's3://aiola-datasets/customer-a/jan-2025/val.csv',
+        file_name: 'val.csv',
+        record_count: 1200,
+        created_at: '2025-01-16T09:00:00Z'
+      }
+    ]
   }
 ];
 

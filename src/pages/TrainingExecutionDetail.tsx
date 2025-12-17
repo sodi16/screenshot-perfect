@@ -200,13 +200,24 @@ export default function TrainingExecutionDetail() {
                   </div>
                 </div>
                 {training.s3_model_path && (
-                  <div className="col-span-2">
+                  <div>
                     <p className="text-sm font-medium text-muted-foreground">S3 Model Path</p>
                     <button 
                       onClick={() => copyToClipboard(training.s3_model_path!)}
                       className="mt-1 font-mono text-sm text-primary hover:underline break-all text-left"
                     >
                       {training.s3_model_path}
+                    </button>
+                  </div>
+                )}
+                {training.wandb_url && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Wandb URL</p>
+                    <button 
+                      onClick={() => copyToClipboard(training.wandb_url!)}
+                      className="mt-1 font-mono text-sm text-primary hover:underline break-all text-left"
+                    >
+                      {training.wandb_url}
                     </button>
                   </div>
                 )}
@@ -266,7 +277,7 @@ export default function TrainingExecutionDetail() {
           </Card>
 
           {/* Model Artifacts */}
-          {training.model_artifacts && training.model_artifacts.length > 0 && (
+          {((training.model_artifacts && training.model_artifacts.length > 0) || training.base_model_artifact) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -280,13 +291,49 @@ export default function TrainingExecutionDetail() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Artifact Type</TableHead>
+                      <TableHead>Model Name</TableHead>
+                      <TableHead>Model Tag</TableHead>
                       <TableHead>S3 Path</TableHead>
                       <TableHead>Size (MB)</TableHead>
                       <TableHead>Created At</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {training.model_artifacts.map((artifact) => (
+                    {/* Base Model Artifact */}
+                    {training.base_model_artifact && (
+                      <TableRow 
+                        key={training.base_model_artifact.artifact_id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/model-artifacts/${training.base_model_artifact.artifact_id}`)}
+                      >
+                        <TableCell>
+                          <Badge variant="outline">WEIGHT</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {training.base_model_artifact.model_artifact_name}
+                        </TableCell>
+                        <TableCell>
+                          {training.base_model_artifact.model_tag ? (
+                            <Badge variant="secondary">{training.base_model_artifact.model_tag}</Badge>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(training.base_model_artifact!.s3_path);
+                            }}
+                            className="font-mono text-xs text-primary hover:underline truncate max-w-[200px] block"
+                          >
+                            {training.base_model_artifact.s3_path}
+                          </button>
+                        </TableCell>
+                        <TableCell>{training.base_model_artifact.model_size_mb?.toLocaleString() || '-'}</TableCell>
+                        <TableCell>-</TableCell>
+                      </TableRow>
+                    )}
+                    {/* Generated Model Artifacts */}
+                    {training.model_artifacts?.map((artifact) => (
                       <TableRow 
                         key={artifact.artifact_id} 
                         className="cursor-pointer hover:bg-muted/50"
@@ -294,6 +341,14 @@ export default function TrainingExecutionDetail() {
                       >
                         <TableCell>
                           <Badge variant="outline">{artifact.artifact_type}</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {artifact.model_artifact_name}
+                        </TableCell>
+                        <TableCell>
+                          {artifact.model_tag ? (
+                            <Badge variant="secondary">{artifact.model_tag}</Badge>
+                          ) : '-'}
                         </TableCell>
                         <TableCell>
                           <button 

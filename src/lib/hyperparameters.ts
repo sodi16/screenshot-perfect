@@ -14,7 +14,7 @@ export const hyperparameters: HyperparameterConfig[] = [
   {
     argument: 'gradient-accumulation-steps',
     type: 'int',
-    defaultValue: '2',
+    defaultValue: '1',
     description: 'gradient accumulation steps',
   },
   {
@@ -38,7 +38,7 @@ export const hyperparameters: HyperparameterConfig[] = [
   {
     argument: 'batch-size',
     type: 'int',
-    defaultValue: '8',
+    defaultValue: '4',
     description: 'batch size',
   },
   {
@@ -50,7 +50,7 @@ export const hyperparameters: HyperparameterConfig[] = [
   {
     argument: 'optim',
     type: 'str',
-    defaultValue: 'adafactor',
+    defaultValue: 'adamw_torch',
     description: 'optimization strategy',
   },
   {
@@ -74,13 +74,13 @@ export const hyperparameters: HyperparameterConfig[] = [
   {
     argument: 'parts-to-freeze',
     type: 'str',
-    defaultValue: 'None',
+    defaultValue: 'all_but_adapters',
     description: 'which model parts to freeze (various choices)',
   },
   {
     argument: 'kws-prompt-prob',
     type: 'float',
-    defaultValue: '0',
+    defaultValue: '0.5',
     description: 'probability to sample keyword spotter prompt',
   },
   {
@@ -110,7 +110,7 @@ export const hyperparameters: HyperparameterConfig[] = [
   {
     argument: 'use-lora',
     type: 'custom_bool',
-    defaultValue: 'false',
+    defaultValue: 'true',
     description: 'use training with LoRA',
   },
   {
@@ -128,7 +128,7 @@ export const hyperparameters: HyperparameterConfig[] = [
   {
     argument: 'max-sot-tokens',
     type: 'int',
-    defaultValue: '10',
+    defaultValue: '15',
     description: 'Maximum number of start of transcript tokens to add to an audio sample',
   },
   // Hidden parameters - included in API but not shown in UI
