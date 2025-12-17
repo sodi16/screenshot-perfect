@@ -109,7 +109,7 @@ export async function fetchTrainingDataPreparationsByTenant(tenantId: string): P
   // }
   
   return apiCall<TrainingDataPreparationResponse[]>(
-    `/training_data_preparations/filter?tenant_id=${tenantId}`
+    `/training_data/filter?tenant_id=${tenantId}`
   );
 }
 
