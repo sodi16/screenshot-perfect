@@ -139,7 +139,7 @@ export async function fetchDatasetById(id: string): Promise<DataGeneration | nul
   return mapApiDatasetToDataGeneration(response);
 }
 
-export async function filterTrainingData(request: TrainingDataPreparationFilterRequest): Promise<TrainingDataPreparationFilterResponse> {
+export async function filterSnowflakeTrainingData(request: TrainingDataPreparationFilterRequest): Promise<TrainingDataPreparationFilterResponse> {
   if (APP_CONFIG.useDummyData) {
     // Simulate a filter response
     return Promise.resolve({
@@ -154,7 +154,7 @@ export async function filterTrainingData(request: TrainingDataPreparationFilterR
     });
   }
   
-  return apiCall<TrainingDataPreparationFilterResponse>('/training_data/filter', {
+  return apiCall<TrainingDataPreparationFilterResponse>('/training_data/snowflake-filter', {
     method: 'POST',
     body: JSON.stringify(request),
   });
@@ -436,7 +436,7 @@ export async function createDatasetFetch(request: { filters: SnowflakeFilters })
   preview: { total_count: number; sample_records: Record<string, unknown>[] };
   filters_applied: SnowflakeFilters;
 }> {
-  const response = await filterTrainingData({ filters: request.filters });
+  const response = await filterSnowflakeTrainingData({ filters: request.filters });
   return {
     fetch_id: response.fetch_id,
     preview: {

@@ -24,7 +24,7 @@ import {
   fetchTenantMappings, 
   fetchWorkflowsByTenant, 
   fetchTenantTrtllmModels,
-  filterTrainingData, 
+  filterSnowflakeTrainingData, 
   saveDataset 
 } from '@/lib/api-service';
 import type { SnowflakeFilters, TenantMapping, WorkflowInfo, TRTLLMModel } from '@/lib/api-types';
@@ -206,7 +206,7 @@ export function CreateDatasetForm({ onSuccess }: CreateDatasetFormProps) {
         date_range_end: dateRangeEnd?.toISOString() || null,
       };
       
-      const response = await filterTrainingData({ filters: requestFilters });
+      const response = await filterSnowflakeTrainingData({ filters: requestFilters });
       setPreviewData({
         record_count: response.record_count,
         fetch_id: response.fetch_id,
